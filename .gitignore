@@ -4,5 +4,6 @@ dist/
 .env
 golden-ratio-report*.png
 
-# Allow bundled plugin dist
+# Allow bundled plugin dist and deps
 !golden-ratio-plugin/dist/
+!golden-ratio-plugin/node_modules/

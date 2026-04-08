@@ -1,11 +1,8 @@
 {
   "mcpServers": {
     "golden-ratio": {
-      "command": "bash",
-      "args": [
-        "-c",
-        "cd \"$CLAUDE_PLUGIN_ROOT\" && [ -d node_modules ] || npm install --omit=dev 2>/dev/null 1>&2 && node dist/index.js"
-      ]
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"]
     }
   }
 }
