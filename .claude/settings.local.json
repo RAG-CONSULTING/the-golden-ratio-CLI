@@ -11,7 +11,22 @@
       "Bash(node scripts/run-report.js \"https://jongibby.com/\")",
       "Bash(curl -s \"https://anthropic.com/claude-code/marketplace.schema.json\")",
       "Bash(chmod +x \"C:/Users/GIBBY/Desktop/claude_code/projects/2026-04-07_the_golden_ratio_CLI/the-golden-ratio-CLI/scripts/setup.sh\")",
-      "Bash(npm run:*)"
+      "Bash(gh repo:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp -r dist/ golden-ratio-plugin/dist/)",
+      "Bash(cp package.json golden-ratio-plugin/package.json)",
+      "Bash(cp package-lock.json golden-ratio-plugin/package-lock.json)",
+      "Bash(cp -r scripts/ golden-ratio-plugin/scripts/)",
+      "Bash(rm:*)",
+      "Bash(npm whoami:*)",
+      "Bash(cp:*)",
+      "Bash(npm run:*)",
+      "Bash(rm -rf \"C:/Users/GIBBY/.claude/plugins/cache/golden-ratio-tools/golden-ratio-cli/0.1.0/\")",
+      "Bash(mkdir -p \"C:/Users/GIBBY/.claude/plugins/cache/golden-ratio-tools/golden-ratio-cli/0.1.0/\")",
+      "Bash(cp -r \"C:/Users/GIBBY/.claude/plugins/marketplaces/golden-ratio-tools/golden-ratio-plugin/\"* \"C:/Users/GIBBY/.claude/plugins/cache/golden-ratio-tools/golden-ratio-cli/0.1.0/\")",
+      "Bash(cp -r \"C:/Users/GIBBY/.claude/plugins/marketplaces/golden-ratio-tools/golden-ratio-plugin/.claude-plugin\" \"C:/Users/GIBBY/.claude/plugins/cache/golden-ratio-tools/golden-ratio-cli/0.1.0/\")",
+      "Bash(cp \"C:/Users/GIBBY/.claude/plugins/marketplaces/golden-ratio-tools/golden-ratio-plugin/.mcp.json\" \"C:/Users/GIBBY/.claude/plugins/cache/golden-ratio-tools/golden-ratio-cli/0.1.0/\")"
     ]
-  }
+  },
+  "enabledPlugins": {}
 }
