@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "golden-ratio": {
+      "command": "npx",
+      "args": ["golden-ratio-cli"]
+    }
+  }
+}

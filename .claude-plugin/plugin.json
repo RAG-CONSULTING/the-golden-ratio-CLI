@@ -1,0 +1,10 @@
+{
+  "name": "golden-ratio-cli",
+  "version": "0.1.0",
+  "description": "Validates website designs against golden ratio principles using Playwright browser automation",
+  "author": {
+    "name": "GIBBY"
+  },
+  "license": "MIT",
+  "keywords": ["golden-ratio", "design", "validation", "playwright", "css", "layout"]
+}

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golden Ratio Test Page</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: sans-serif;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+
+    /* Header - full width */
+    header {
+      height: 80px;
+      background: #333;
+      padding: 20px 32px;
+    }
+
+    /* Main layout: golden ratio columns (618px / 382px at 1000px container) */
+    .layout {
+      display: flex;
+      width: 1000px;
+      margin: 0 auto;
+    }
+
+    .content {
+      width: 618px;
+      padding: 32px 20px;
+      background: #f5f5f5;
+    }
+
+    .sidebar {
+      width: 382px;
+      padding: 20px 12px;
+      background: #e0e0e0;
+    }
+
+    /* Typography: golden ratio scale */
+    /* Base: 16px, h3: 26px (16 * 1.618), h2: 42px (26 * 1.618), h1: 68px (42 * 1.618) */
+    h1 { font-size: 68px; margin-bottom: 26px; }
+    h2 { font-size: 42px; margin-bottom: 16px; }
+    h3 { font-size: 26px; margin-bottom: 10px; }
+    p { font-size: 16px; line-height: 26px; margin-bottom: 16px; }
+    small { font-size: 10px; }
+
+    /* Golden ratio card: 300 x 185 ≈ 1.621 */
+    .golden-card {
+      width: 300px;
+      height: 185px;
+      background: #4a90d9;
+      padding: 20px 32px;
+      margin: 20px 0;
+    }
+
+    /* Non-golden card: 300 x 300 = 1.0 ratio (intentionally bad) */
+    .square-card {
+      width: 300px;
+      height: 300px;
+      background: #d94a4a;
+      padding: 20px 20px;
+      margin: 20px 0;
+    }
+
+    footer {
+      height: 120px;
+      background: #333;
+      padding: 32px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h3 style="color: white;">Golden Ratio Test</h3>
+  </header>
+
+  <div class="layout">
+    <main class="content">
+      <h1>Heading One</h1>
+      <h2>Heading Two</h2>
+      <p>Body text paragraph for testing typography ratios against the golden ratio scale.</p>
+      <div class="golden-card">
+        <p style="color: white;">Golden ratio card (300x185)</p>
+      </div>
+      <div class="square-card">
+        <p style="color: white;">Square card (300x300) - not golden</p>
+      </div>
+    </main>
+    <aside class="sidebar">
+      <h3>Sidebar</h3>
+      <p>Sidebar content for testing column width ratios.</p>
+      <small>Small text for scale testing.</small>
+    </aside>
+  </div>
+
+  <footer></footer>
+</body>
+</html>
