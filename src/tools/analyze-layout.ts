@@ -25,6 +25,7 @@ export function registerAnalyzeLayout(server: McpServer) {
           (m) => m
         );
 
+        for (const m of measurements) m.category = "layout";
         const result: AnalysisResult = {
           category: "layout",
           measurements,

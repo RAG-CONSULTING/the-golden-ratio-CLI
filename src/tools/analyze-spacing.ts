@@ -26,6 +26,7 @@ export function registerAnalyzeSpacing(server: McpServer) {
           (m) => m
         );
 
+        for (const m of measurements) m.category = "spacing";
         const result: AnalysisResult = {
           category: "spacing",
           measurements,

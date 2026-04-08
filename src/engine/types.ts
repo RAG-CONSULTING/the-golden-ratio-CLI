@@ -11,6 +11,7 @@ export interface Measurement {
   deviation_pct: number;
   pass: boolean;
   suggestion: string;
+  category?: "layout" | "typography" | "spacing" | "element";
 }
 
 export interface AnalysisResult {

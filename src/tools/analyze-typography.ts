@@ -26,6 +26,7 @@ export function registerAnalyzeTypography(server: McpServer) {
           (m) => m
         );
 
+        for (const m of measurements) m.category = "typography";
         const result: AnalysisResult = {
           category: "typography",
           measurements,

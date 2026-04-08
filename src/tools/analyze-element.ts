@@ -42,6 +42,7 @@ export function registerAnalyzeElement(server: McpServer) {
           };
         }
 
+        for (const m of measurements) m.category = "element";
         const result: AnalysisResult = {
           category: "element",
           measurements,

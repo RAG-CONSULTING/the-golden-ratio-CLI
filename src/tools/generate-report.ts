@@ -11,11 +11,18 @@ import { scoreMeasurements } from "../engine/ratio-calculator.js";
 import type { AnalysisResult, Measurement } from "../engine/types.js";
 import { buildFullReport, formatFullReport } from "../utils/formatting.js";
 
+function stampCategory(measurements: Measurement[], category: Measurement["category"]): void {
+  for (const m of measurements) m.category = category;
+}
+
 function buildAnalyses(
   layoutMeasurements: Measurement[],
   typographyMeasurements: Measurement[],
   spacingMeasurements: Measurement[]
 ): AnalysisResult[] {
+  stampCategory(layoutMeasurements, "layout");
+  stampCategory(typographyMeasurements, "typography");
+  stampCategory(spacingMeasurements, "spacing");
   return [
     {
       category: "layout" as const,

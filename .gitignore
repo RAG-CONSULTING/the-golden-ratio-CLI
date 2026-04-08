@@ -2,3 +2,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 .env
+golden-ratio-report*.png
+
+# Allow bundled plugin dist
+!golden-ratio-plugin/dist/

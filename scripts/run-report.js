@@ -26,6 +26,9 @@ const { sections, fullPageScreenshot } = await analyzePageSections(
       extractTypographyMeasurements(page, "body", tolerance, bounds),
       extractSpacingMeasurements(page, "body", tolerance, bounds),
     ]);
+    for (const m of layoutM) m.category = "layout";
+    for (const m of typoM) m.category = "typography";
+    for (const m of spacingM) m.category = "spacing";
     return [
       { category: "layout", measurements: layoutM, score: scoreMeasurements(layoutM), summary: `${layoutM.filter(m => m.pass).length}/${layoutM.length} layout proportions within tolerance` },
       { category: "typography", measurements: typoM, score: scoreMeasurements(typoM), summary: `${typoM.filter(m => m.pass).length}/${typoM.length} typography proportions within tolerance` },
