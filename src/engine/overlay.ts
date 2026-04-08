@@ -28,6 +28,8 @@ export async function captureWithOverlay(
       typography: { line: "#8B5CF6", fill: "rgba(139, 92, 246, 0.12)",  label: "rgba(139, 92, 246, 0.9)" },
       spacing:    { line: "#F59E0B", fill: "rgba(245, 158, 11, 0.12)",  label: "rgba(245, 158, 11, 0.9)" },
       element:    { line: "#14B8A6", fill: "rgba(20, 184, 166, 0.12)",  label: "rgba(20, 184, 166, 0.9)" },
+      density:    { line: "#EC4899", fill: "rgba(236, 72, 153, 0.12)",  label: "rgba(236, 72, 153, 0.9)" },
+      noise:      { line: "#10B981", fill: "rgba(16, 185, 129, 0.12)",  label: "rgba(16, 185, 129, 0.9)" },
     };
     const defaultColors = { line: "#9CA3AF", fill: "rgba(156, 163, 175, 0.12)", label: "rgba(156, 163, 175, 0.9)" };
 

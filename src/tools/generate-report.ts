@@ -5,6 +5,8 @@ import {
   extractLayoutMeasurements,
   extractTypographyMeasurements,
   extractSpacingMeasurements,
+  extractDensityMeasurements,
+  extractNoiseMeasurements,
   type ViewportBounds,
 } from "../engine/extractor.js";
 import { scoreMeasurements } from "../engine/ratio-calculator.js";
@@ -17,32 +19,33 @@ function stampCategory(measurements: Measurement[], category: Measurement["categ
 }
 
 function buildAnalyses(
-  layoutMeasurements: Measurement[],
-  typographyMeasurements: Measurement[],
-  spacingMeasurements: Measurement[]
+  layoutM: Measurement[],
+  typographyM: Measurement[],
+  spacingM: Measurement[],
+  densityM: Measurement[],
+  noiseM: Measurement[]
 ): AnalysisResult[] {
-  stampCategory(layoutMeasurements, "layout");
-  stampCategory(typographyMeasurements, "typography");
-  stampCategory(spacingMeasurements, "spacing");
+  stampCategory(layoutM, "layout");
+  stampCategory(typographyM, "typography");
+  stampCategory(spacingM, "spacing");
+  stampCategory(densityM, "density");
+  stampCategory(noiseM, "noise");
+
+  function makeResult(category: AnalysisResult["category"], measurements: Measurement[]): AnalysisResult {
+    return {
+      category,
+      measurements,
+      score: scoreMeasurements(measurements),
+      summary: `${measurements.filter((m) => m.pass).length}/${measurements.length} ${category} proportions within tolerance`,
+    };
+  }
+
   return [
-    {
-      category: "layout" as const,
-      measurements: layoutMeasurements,
-      score: scoreMeasurements(layoutMeasurements),
-      summary: `${layoutMeasurements.filter((m) => m.pass).length}/${layoutMeasurements.length} layout proportions within tolerance`,
-    },
-    {
-      category: "typography" as const,
-      measurements: typographyMeasurements,
-      score: scoreMeasurements(typographyMeasurements),
-      summary: `${typographyMeasurements.filter((m) => m.pass).length}/${typographyMeasurements.length} typography proportions within tolerance`,
-    },
-    {
-      category: "spacing" as const,
-      measurements: spacingMeasurements,
-      score: scoreMeasurements(spacingMeasurements),
-      summary: `${spacingMeasurements.filter((m) => m.pass).length}/${spacingMeasurements.length} spacing proportions within tolerance`,
-    },
+    makeResult("layout", layoutM),
+    makeResult("typography", typographyM),
+    makeResult("spacing", spacingM),
+    makeResult("density", densityM),
+    makeResult("noise", noiseM),
   ];
 }
 
@@ -85,14 +88,16 @@ export function registerGenerateReport(server: McpServer) {
           viewport_width,
           viewport_height,
           async (page, bounds: ViewportBounds) => {
-            const [layoutMeasurements, typographyMeasurements, spacingMeasurements] =
+            const [layoutM, typographyM, spacingM, densityM, noiseM] =
               await Promise.all([
                 extractLayoutMeasurements(page, ctx.tolerance, bounds),
                 extractTypographyMeasurements(page, "body", ctx.tolerance, bounds, ctx.typographySelectors),
                 extractSpacingMeasurements(page, "body", ctx.tolerance, bounds, ctx.spacingChildLimit),
+                extractDensityMeasurements(page, ctx.tolerance, bounds),
+                extractNoiseMeasurements(page, ctx.tolerance, bounds),
               ]);
 
-            return buildAnalyses(layoutMeasurements, typographyMeasurements, spacingMeasurements);
+            return buildAnalyses(layoutM, typographyM, spacingM, densityM, noiseM);
           },
           (analyses) => analyses.flatMap((a) => a.measurements),
           ctx.spiralOrigin,
@@ -102,7 +107,7 @@ export function registerGenerateReport(server: McpServer) {
         // Combine all section analyses for the overall report
         const allAnalyses = sections.flatMap((s) => s.analyses);
         const mergedAnalyses: AnalysisResult[] = [];
-        const categories = ["layout", "typography", "spacing"] as const;
+        const categories = ["layout", "typography", "spacing", "density", "noise"] as const;
         for (const cat of categories) {
           const catAnalyses = allAnalyses.filter((a) => a.category === cat);
           const allMeasurements = catAnalyses.flatMap((a) => a.measurements);

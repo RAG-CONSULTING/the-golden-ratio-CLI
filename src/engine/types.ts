@@ -11,11 +11,11 @@ export interface Measurement {
   deviation_pct: number;
   pass: boolean;
   suggestion: string;
-  category?: "layout" | "typography" | "spacing" | "element";
+  category?: "layout" | "typography" | "spacing" | "element" | "density" | "noise";
 }
 
 export interface AnalysisResult {
-  category: "layout" | "typography" | "spacing" | "element";
+  category: "layout" | "typography" | "spacing" | "element" | "density" | "noise";
   measurements: Measurement[];
   score: number;
   summary: string;
@@ -58,6 +58,8 @@ export interface CategoryWeights {
   typography: number;
   spacing: number;
   element: number;
+  density: number;
+  noise: number;
 }
 
 export interface PageContext {

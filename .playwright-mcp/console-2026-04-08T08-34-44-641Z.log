@@ -1,0 +1,19 @@
+[     328ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:169
+[     332ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:230
+[     333ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:400
+[     334ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:626
+[     334ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:820
+[     335ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:1022
+[     335ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:1240
+[     389ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:1490
+[     390ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:1780
+[     403ms] [ERROR] Failed to load resource: the server responded with a status of 404 (Not Found) @ http://localhost:8766/favicon.ico:0
+[    1925ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:169
+[    1932ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:230
+[    1942ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:400
+[    1944ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:626
+[    1945ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:820
+[    1946ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:1022
+[    1947ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:1240
+[    1949ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:1490
+[    1950ms] [ERROR] Error: <rect> attribute rx: Expected length, "0 0 3 3". @ http://localhost:8766/golden-ratio-report.html:1780

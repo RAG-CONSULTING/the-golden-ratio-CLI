@@ -39,7 +39,11 @@
       "mcp__plugin_playwright_playwright__browser_click",
       "mcp__plugin_playwright_playwright__browser_evaluate",
       "mcp__plugin_playwright_playwright__browser_run_code",
-      "mcp__plugin_playwright_playwright__browser_close"
+      "mcp__plugin_playwright_playwright__browser_close",
+      "Bash(export CLAUDE_PLUGIN_ROOT=\"C:/Users/GIBBY/.claude/plugins/cache/golden-ratio-tools/golden-ratio-cli/0.1.0\")",
+      "Bash(node dist/index.js)",
+      "Bash(echo \"EXIT CODE: $?\")",
+      "Bash(node run-report.mjs \"https://jongibby.com\" \"portfolio\")"
     ]
   },
   "enabledPlugins": {}

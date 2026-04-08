@@ -7,6 +7,8 @@ import { registerAnalyzeLayout } from "./tools/analyze-layout.js";
 import { registerAnalyzeTypography } from "./tools/analyze-typography.js";
 import { registerAnalyzeSpacing } from "./tools/analyze-spacing.js";
 import { registerGenerateReport } from "./tools/generate-report.js";
+import { registerAnalyzeDensity } from "./tools/analyze-density.js";
+import { registerAnalyzeNoise } from "./tools/analyze-noise.js";
 
 const server = new McpServer(
   {
@@ -30,6 +32,8 @@ registerAnalyzeLayout(server);
 registerAnalyzeTypography(server);
 registerAnalyzeSpacing(server);
 registerAnalyzeElement(server);
+registerAnalyzeDensity(server);
+registerAnalyzeNoise(server);
 registerGenerateReport(server);
 
 const transport = new StdioServerTransport();

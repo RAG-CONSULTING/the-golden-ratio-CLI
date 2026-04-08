@@ -5,6 +5,8 @@ import {
   extractLayoutMeasurements,
   extractTypographyMeasurements,
   extractSpacingMeasurements,
+  extractDensityMeasurements,
+  extractNoiseMeasurements,
 } from "../dist/engine/extractor.js";
 import { scoreMeasurements } from "../dist/engine/ratio-calculator.js";
 import { resolveContext } from "../dist/engine/presets.js";
@@ -27,19 +29,22 @@ const { sections, fullPageScreenshot } = await analyzePageSections(
   width,
   height,
   async (page, bounds) => {
-    const [layoutM, typoM, spacingM] = await Promise.all([
+    const [layoutM, typoM, spacingM, densityM, noiseM] = await Promise.all([
       extractLayoutMeasurements(page, ctx.tolerance, bounds),
       extractTypographyMeasurements(page, "body", ctx.tolerance, bounds, ctx.typographySelectors),
       extractSpacingMeasurements(page, "body", ctx.tolerance, bounds, ctx.spacingChildLimit),
+      extractDensityMeasurements(page, ctx.tolerance, bounds),
+      extractNoiseMeasurements(page, ctx.tolerance, bounds),
     ]);
     for (const m of layoutM) m.category = "layout";
     for (const m of typoM) m.category = "typography";
     for (const m of spacingM) m.category = "spacing";
-    return [
-      { category: "layout", measurements: layoutM, score: scoreMeasurements(layoutM), summary: `${layoutM.filter(m => m.pass).length}/${layoutM.length} layout proportions within tolerance` },
-      { category: "typography", measurements: typoM, score: scoreMeasurements(typoM), summary: `${typoM.filter(m => m.pass).length}/${typoM.length} typography proportions within tolerance` },
-      { category: "spacing", measurements: spacingM, score: scoreMeasurements(spacingM), summary: `${spacingM.filter(m => m.pass).length}/${spacingM.length} spacing proportions within tolerance` },
-    ];
+    for (const m of densityM) m.category = "density";
+    for (const m of noiseM) m.category = "noise";
+    function make(category, measurements) {
+      return { category, measurements, score: scoreMeasurements(measurements), summary: `${measurements.filter(m => m.pass).length}/${measurements.length} ${category} proportions within tolerance` };
+    }
+    return [make("layout", layoutM), make("typography", typoM), make("spacing", spacingM), make("density", densityM), make("noise", noiseM)];
   },
   (analyses) => analyses.flatMap((a) => a.measurements),
   ctx.spiralOrigin,
@@ -64,7 +69,7 @@ for (let i = 0; i < sections.length; i++) {
 
 // Merge analyses across sections for overall report
 const allAnalyses = sections.flatMap((s) => s.analyses);
-const categories = ["layout", "typography", "spacing"];
+const categories = ["layout", "typography", "spacing", "density", "noise"];
 const mergedAnalyses = categories.map((cat) => {
   const measurements = allAnalyses.filter((a) => a.category === cat).flatMap((a) => a.measurements);
   return {

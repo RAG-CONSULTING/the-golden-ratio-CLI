@@ -11,10 +11,12 @@ export function buildFullReport(
   pageType?: PageType
 ): FullReport {
   const weights: Record<string, number> = customWeights ? { ...customWeights } : {
-    layout: 0.35,
-    typography: 0.25,
-    spacing: 0.25,
-    element: 0.15,
+    layout: 0.30,
+    typography: 0.22,
+    spacing: 0.22,
+    element: 0.11,
+    density: 0.08,
+    noise: 0.07,
   };
 
   let weightedSum = 0;

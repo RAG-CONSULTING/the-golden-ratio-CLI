@@ -5,7 +5,7 @@ const DEFAULT_TYPO_SELECTORS = ["h1", "h2", "h3", "h4", "h5", "h6", "p", "small"
 const PRESETS: Record<PageType, PageContext> = {
   general: {
     pageType: "general",
-    weights: { layout: 0.35, typography: 0.25, spacing: 0.25, element: 0.15 },
+    weights: { layout: 0.30, typography: 0.22, spacing: 0.22, element: 0.11, density: 0.08, noise: 0.07 },
     tolerance: 0.10,
     typographySelectors: DEFAULT_TYPO_SELECTORS,
     spacingChildLimit: 30,
@@ -14,7 +14,7 @@ const PRESETS: Record<PageType, PageContext> = {
   },
   landing: {
     pageType: "landing",
-    weights: { layout: 0.40, typography: 0.30, spacing: 0.20, element: 0.10 },
+    weights: { layout: 0.35, typography: 0.25, spacing: 0.17, element: 0.08, density: 0.08, noise: 0.07 },
     tolerance: 0.08,
     typographySelectors: [...DEFAULT_TYPO_SELECTORS, "[class*='hero']", "[class*='headline']"],
     spacingChildLimit: 30,
@@ -23,7 +23,7 @@ const PRESETS: Record<PageType, PageContext> = {
   },
   saas: {
     pageType: "saas",
-    weights: { layout: 0.30, typography: 0.20, spacing: 0.35, element: 0.15 },
+    weights: { layout: 0.25, typography: 0.17, spacing: 0.30, element: 0.10, density: 0.10, noise: 0.08 },
     tolerance: 0.10,
     typographySelectors: [...DEFAULT_TYPO_SELECTORS, "label", ".label", "button", ".button"],
     spacingChildLimit: 50,
@@ -32,7 +32,7 @@ const PRESETS: Record<PageType, PageContext> = {
   },
   portfolio: {
     pageType: "portfolio",
-    weights: { layout: 0.25, typography: 0.45, spacing: 0.20, element: 0.10 },
+    weights: { layout: 0.20, typography: 0.40, spacing: 0.17, element: 0.08, density: 0.08, noise: 0.07 },
     tolerance: 0.08,
     typographySelectors: [...DEFAULT_TYPO_SELECTORS, "blockquote", "figcaption", ".caption"],
     spacingChildLimit: 30,
@@ -41,7 +41,7 @@ const PRESETS: Record<PageType, PageContext> = {
   },
   ecommerce: {
     pageType: "ecommerce",
-    weights: { layout: 0.25, typography: 0.15, spacing: 0.40, element: 0.20 },
+    weights: { layout: 0.20, typography: 0.12, spacing: 0.33, element: 0.15, density: 0.10, noise: 0.10 },
     tolerance: 0.12,
     typographySelectors: [...DEFAULT_TYPO_SELECTORS, ".price", "[class*='price']"],
     spacingChildLimit: 120,
@@ -50,7 +50,7 @@ const PRESETS: Record<PageType, PageContext> = {
   },
   blog: {
     pageType: "blog",
-    weights: { layout: 0.20, typography: 0.50, spacing: 0.20, element: 0.10 },
+    weights: { layout: 0.17, typography: 0.43, spacing: 0.17, element: 0.08, density: 0.08, noise: 0.07 },
     tolerance: 0.08,
     typographySelectors: [...DEFAULT_TYPO_SELECTORS, "blockquote", "li", "figcaption"],
     spacingChildLimit: 40,

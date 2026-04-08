@@ -1,6 +1,6 @@
 # The Golden Ratio CLI
 
-An MCP server plugin for Claude Code that validates website designs against golden ratio (φ ≈ 1.618) principles. Point it at any running website and get a proportional audit of your layout, typography, spacing, and element dimensions.
+An MCP server plugin for Claude Code that validates website designs against golden ratio (φ ≈ 1.618) principles. Point it at any running website and get a proportional audit — with annotated screenshots showing golden spiral overlays, dimension lines, and pass/fail indicators color-coded by category.
 
 ## Install
 
@@ -13,18 +13,18 @@ Two commands inside Claude Code:
 /plugin install golden-ratio-cli
 ```
 
-That's it. Dependencies and Chromium are installed automatically on first run.
+That's it. The plugin is self-contained — all dependencies are bundled.
 
 ### Manual
 
-If you prefer to configure the MCP server directly, add to your `.claude/mcp.json` (global) or project `.mcp.json`:
+Add to your `.claude/mcp.json` (global) or project `.mcp.json`:
 
 ```json
 {
   "mcpServers": {
     "golden-ratio": {
-      "command": "npx",
-      "args": ["golden-ratio-cli"]
+      "command": "node",
+      "args": ["path/to/golden-ratio-plugin/dist/index.js"]
     }
   }
 }
@@ -34,7 +34,7 @@ If you prefer to configure the MCP server directly, add to your `.claude/mcp.jso
 
 ### `analyze_layout`
 
-Full page layout audit. Detects column arrangements, section height ratios, and major element proportions.
+Full page layout audit. Detects column arrangements, section height ratios, and major element proportions. Returns an annotated screenshot with dimension lines and ratio tags.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -45,7 +45,7 @@ Full page layout audit. Detects column arrangements, section height ratios, and 
 
 ### `analyze_typography`
 
-Checks font size ratios between heading levels (h1-h6), body text, and line-height proportions.
+Checks font size ratios between heading levels (h1-h6), body text, and line-height proportions. Annotates text elements with size labels and connecting lines showing the ratio between them.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -57,7 +57,7 @@ Checks font size ratios between heading levels (h1-h6), body text, and line-heig
 
 ### `analyze_spacing`
 
-Audits margin and padding relationships for golden ratio harmony between related elements.
+Audits margin and padding relationships for golden ratio harmony between related elements. Highlights spacing zones with semi-transparent fills and gap measurements.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -69,7 +69,7 @@ Audits margin and padding relationships for golden ratio harmony between related
 
 ### `analyze_element`
 
-Checks a specific element's width/height ratio, padding proportions, and relationship to its parent container.
+Checks a specific element's width/height ratio, padding proportions, and relationship to its parent container. Optionally analyzes direct children.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -85,7 +85,7 @@ Checks a specific element's width/height ratio, padding proportions, and relatio
 Runs all analyses by scrolling through the entire page section-by-section. Each viewport-height frame is analyzed independently, with the first frame reported as the **"First Contact"** — the above-the-fold view users see on initial page load.
 
 The report includes:
-- A full-page annotated screenshot with golden ratio overlays
+- A full-page annotated screenshot with golden ratio spiral overlay
 - Per-section annotated screenshots, each with its own grade
 - A "First Contact" score highlighting the initial viewport impression
 - Merged overall scores across all sections
@@ -104,7 +104,7 @@ The report divides the page into viewport-height sections and scores each one:
 
 ```
 First Contact (viewport):  A   (score: 92)
-  layout:     95  — hero 61.8% / sidebar 38.2% ✓
+  layout:     95  — hero 61.8% / sidebar 38.2%
   typography: 88  — h1/h2 ratio 1.55
   spacing:    90
 
@@ -115,7 +115,25 @@ Footer zone:                C+  (score: 72)
 Overall:                    B+  (score: 82)
 ```
 
-This matters because the golden ratio relationships users perceive on first load carry more weight for first impressions than content further down the page. The individual tool analyzers (`analyze_layout`, `analyze_typography`, `analyze_spacing`) still operate on the full page for targeted audits.
+This matters because the golden ratio relationships users perceive on first load carry more weight for first impressions than content further down the page.
+
+## Visual Overlays
+
+Every tool returns annotated screenshots with:
+
+- **Golden spiral** — a true recursive φ-subdivision spiral overlaid on the viewport, with configurable origin (`top-left`, `top-right`, `bottom-left`, `bottom-right`)
+- **Dimension lines** — horizontal and vertical measurement lines with pixel values and end caps, like architectural drawings
+- **Ratio tags** — labels showing `✓ 618px : 382px = 1.618 (φ 1.618)` or `✗ 500px : 500px = 1.0 (φ 1.618)` with pass/fail icons
+- **Category color coding**:
+  - Layout — blue
+  - Typography — purple
+  - Spacing — amber
+  - Element — teal
+  - Density — pink
+  - Noise — green
+- **Pass/fail borders** — green borders on passing elements, red on failing
+- **Density limiting** — annotates top 3 failures + top 2 passes + up to 3 more (capped at 8) to avoid visual clutter, with simple labels on remaining elements
+- **Label collision avoidance** — tags are shifted to avoid overlapping each other
 
 ## What It Measures
 
@@ -126,6 +144,29 @@ Each tool returns JSON with measurements containing:
 - **`deviation_pct`** — how far off from golden ratio (%)
 - **`pass`** — whether it's within tolerance
 - **`suggestion`** — actionable CSS fix (e.g. *"Adjust to ~370px (600px / 1.618) for golden ratio"*)
+- **`category`** — which analysis produced this measurement (`layout`, `typography`, `spacing`, `element`, `density`, `noise`)
+
+### Analysis Categories
+
+| Category | What it checks |
+|----------|---------------|
+| Layout | Column width ratios, section height ratios, element width/height proportions |
+| Typography | Heading scale (h1/h2, h2/h3, etc.), heading-to-body ratio, line-height/font-size ratio |
+| Spacing | Vertical margin/padding ratio, horizontal/vertical padding, gap/padding between siblings |
+| Element | Specific element width/height, element/parent width, child/parent proportions |
+| Density | Visual density and content distribution |
+| Noise | Visual noise and complexity assessment |
+
+### Page Types
+
+The tool supports context-aware analysis for different page types, each with tuned weights and tolerances:
+
+- `general` — balanced defaults
+- `landing` — emphasis on hero layout and typography impact
+- `saas` — focus on information hierarchy and readability
+- `portfolio` — emphasis on visual proportions and media
+- `ecommerce` — grid layouts and card proportions
+- `blog` — typography and reading flow
 
 ### Scoring
 
@@ -146,6 +187,8 @@ Measurements are scored 0-100 per category, then weighted into an overall grade:
 | D | 60-69 |
 | F | < 60 |
 
+Grade thresholds are configurable per page type.
+
 ## Example Usage
 
 In Claude Code, with your dev server running:
@@ -155,6 +198,8 @@ In Claude Code, with your dev server running:
 > "Check if my hero card at .hero-section follows golden ratio proportions"
 
 > "Analyze the typography scale on my landing page"
+
+> "Analyze the layout of https://example.com at mobile viewport width 375"
 
 ## The Golden Ratio in Web Design
 
@@ -170,7 +215,7 @@ Not every measurement needs to hit φ exactly — the 10% default tolerance acco
 ## Development
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/RAG-CONSULTING/the-golden-ratio-CLI.git
 cd the-golden-ratio-CLI
 npm install          # also installs Chromium via postinstall
 npm run build        # compile TypeScript

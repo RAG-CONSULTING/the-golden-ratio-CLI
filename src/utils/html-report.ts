@@ -1,4 +1,4 @@
-import type { FullReport, SectionReport, Measurement } from "../engine/types.js";
+import type { AnalysisResult, FullReport, SectionReport, Measurement } from "../engine/types.js";
 
 function gradeColor(grade: string): string {
   switch (grade) {
@@ -10,18 +10,235 @@ function gradeColor(grade: string): string {
   }
 }
 
-function categoryIcon(cat: string): string {
-  switch (cat) {
-    case "layout":     return "&#9638;";
-    case "typography": return "&#9000;";
-    case "spacing":    return "&#8942;";
-    case "element":    return "&#11200;";
-    default:           return "&#9679;";
-  }
-}
+const CATEGORY_COLORS: Record<string, string> = {
+  layout: "#3B82F6", typography: "#8B5CF6", spacing: "#F59E0B",
+  element: "#14B8A6", density: "#EC4899", noise: "#10B981",
+};
+
+const CATEGORY_LABELS: Record<string, string> = {
+  layout: "Layout", typography: "Typography", spacing: "Spacing",
+  element: "Element", density: "Visual Density", noise: "Heatmap Noise",
+};
 
 function escapeHtml(str: string): string {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// --- Category-Specific SVG Visuals ---
+
+function scoreColor(score: number): string {
+  if (score >= 80) return "#22c55e";
+  if (score >= 60) return "#eab308";
+  return "#ef4444";
+}
+
+function renderLayoutVisual(a: AnalysisResult): string {
+  const W = 200, H = 70;
+  const color = CATEGORY_COLORS.layout;
+  // Find a width ratio measurement
+  const widthM = a.measurements.find((m) => m.property.includes("width ratio") || m.property.includes("column"));
+  const heightM = a.measurements.find((m) => m.property.includes("height ratio") || m.property.includes("section height"));
+
+  let rects = "";
+  const phi = 1.618;
+  const idealSplit = W / phi;
+
+  if (widthM) {
+    const total = widthM.actual_value_a + widthM.actual_value_b;
+    const splitPx = total > 0 ? (widthM.actual_value_a / total) * W : idealSplit;
+    const fillColor = widthM.pass ? `${color}44` : "#ef444444";
+    rects += `<rect x="2" y="2" width="${splitPx - 3}" height="${H - 4}" rx="3" fill="${fillColor}" stroke="${widthM.pass ? color : "#ef4444"}" stroke-width="1"/>`;
+    rects += `<rect x="${splitPx + 1}" y="2" width="${W - splitPx - 3}" height="${H - 4}" rx="3" fill="${fillColor}" stroke="${widthM.pass ? color : "#ef4444"}" stroke-width="1" opacity="0.6"/>`;
+    rects += `<text x="${splitPx / 2}" y="${H / 2 + 4}" text-anchor="middle" fill="${color}" font-size="10" font-weight="600">${Math.round(widthM.actual_value_a)}px</text>`;
+    rects += `<text x="${splitPx + (W - splitPx) / 2}" y="${H / 2 + 4}" text-anchor="middle" fill="${color}" font-size="10" font-weight="600">${Math.round(widthM.actual_value_b)}px</text>`;
+  } else if (heightM) {
+    const fillColor = heightM.pass ? `${color}44` : "#ef444444";
+    rects += `<rect x="2" y="2" width="${W / 2 - 3}" height="${H - 4}" rx="3" fill="${fillColor}" stroke="${heightM.pass ? color : "#ef4444"}" stroke-width="1"/>`;
+    rects += `<rect x="${W / 2 + 1}" y="2" width="${W / 2 - 3}" height="${H - 4}" rx="3" fill="${fillColor}" stroke="${heightM.pass ? color : "#ef4444"}" stroke-width="1" opacity="0.6"/>`;
+  } else {
+    rects += `<rect x="2" y="2" width="${W - 4}" height="${H - 4}" rx="3" fill="${color}22" stroke="${color}" stroke-width="1" opacity="0.5"/>`;
+  }
+
+  // Golden ratio guide line
+  rects += `<line x1="${idealSplit}" y1="0" x2="${idealSplit}" y2="${H}" stroke="${color}" stroke-width="1" stroke-dasharray="3,3" opacity="0.5"/>`;
+  rects += `<text x="${idealSplit + 3}" y="11" fill="${color}" font-size="8" opacity="0.6">phi</text>`;
+
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${rects}</svg>`;
+}
+
+function renderTypographyVisual(a: AnalysisResult): string {
+  const W = 200, H = 70;
+  const color = CATEGORY_COLORS.typography;
+
+  // Collect font size measurements to build scale bars
+  const fontSizes: { label: string; size: number; pass: boolean }[] = [];
+  for (const m of a.measurements) {
+    if (m.property.includes("font-size ratio") || m.property.includes("heading-to-body")) {
+      if (!fontSizes.find((f) => f.size === m.actual_value_a)) {
+        fontSizes.push({ label: m.element.split(" / ")[0].split(":")[0], size: m.actual_value_a, pass: m.pass });
+      }
+      if (!fontSizes.find((f) => f.size === m.actual_value_b)) {
+        fontSizes.push({ label: m.element.split(" / ").pop()?.split(":")[0] ?? "", size: m.actual_value_b, pass: m.pass });
+      }
+    }
+  }
+  fontSizes.sort((a, b) => b.size - a.size);
+  const unique = fontSizes.slice(0, 5);
+
+  let bars = "";
+  if (unique.length > 0) {
+    const maxSize = unique[0].size;
+    const barH = Math.min(12, (H - 4) / unique.length - 2);
+    unique.forEach((f, i) => {
+      const barW = maxSize > 0 ? (f.size / maxSize) * (W - 50) : 50;
+      const y = 4 + i * (barH + 3);
+      const fillColor = f.pass ? `${color}66` : "#ef444466";
+      bars += `<rect x="40" y="${y}" width="${barW}" height="${barH}" rx="2" fill="${fillColor}" stroke="${f.pass ? color : "#ef4444"}" stroke-width="0.5"/>`;
+      bars += `<text x="2" y="${y + barH - 2}" fill="${color}" font-size="9" font-weight="600">${Math.round(f.size)}px</text>`;
+      bars += `<text x="${42 + barW + 3}" y="${y + barH - 2}" fill="#888" font-size="8">${f.label}</text>`;
+    });
+  } else {
+    bars = `<text x="${W / 2}" y="${H / 2}" text-anchor="middle" fill="#666" font-size="10">No typography data</text>`;
+  }
+
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`;
+}
+
+function renderSpacingVisual(a: AnalysisResult): string {
+  const W = 200, H = 70;
+  const color = CATEGORY_COLORS.spacing;
+
+  // Draw concentric box model rings
+  const m = a.measurements[0];
+  const outerPad = 6;
+  const innerPad = 18;
+
+  let svg = "";
+  // Outer ring (margin)
+  const outerColor = m && m.pass ? `${color}33` : "#ef444433";
+  svg += `<rect x="${outerPad}" y="${outerPad}" width="${W - outerPad * 2}" height="${H - outerPad * 2}" rx="4" fill="${outerColor}" stroke="${color}" stroke-width="1" opacity="0.7"/>`;
+  svg += `<text x="${outerPad + 4}" y="${outerPad + 10}" fill="${color}" font-size="8" opacity="0.7">margin</text>`;
+
+  // Inner ring (padding)
+  const innerColor = m && m.pass ? `${color}22` : "#ef444422";
+  svg += `<rect x="${innerPad}" y="${innerPad}" width="${W - innerPad * 2}" height="${H - innerPad * 2}" rx="3" fill="${innerColor}" stroke="${color}" stroke-width="1" stroke-dasharray="3,2" opacity="0.7"/>`;
+  svg += `<text x="${innerPad + 4}" y="${innerPad + 10}" fill="${color}" font-size="8" opacity="0.7">padding</text>`;
+
+  // Content core
+  svg += `<rect x="${innerPad + 10}" y="${innerPad + 10}" width="${W - (innerPad + 10) * 2}" height="${H - (innerPad + 10) * 2}" rx="2" fill="${color}11" stroke="${color}55" stroke-width="0.5"/>`;
+
+  // Show ratio if available
+  if (m) {
+    svg += `<text x="${W / 2}" y="${H / 2 + 4}" text-anchor="middle" fill="${color}" font-size="10" font-weight="600">${m.actual_ratio}x</text>`;
+  }
+
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+}
+
+function renderDensityVisual(a: AnalysisResult): string {
+  const W = 200, H = 70;
+  const color = CATEGORY_COLORS.density;
+
+  const contentM = a.measurements.find((m) => m.property === "content/whitespace ratio");
+  const phi = 1.618;
+  const idealFill = 1 / phi; // ~61.8% content
+
+  let fillPct = idealFill;
+  let pass = true;
+  if (contentM) {
+    const total = contentM.actual_value_a + contentM.actual_value_b;
+    fillPct = total > 0 ? Math.max(contentM.actual_value_a, contentM.actual_value_b) / total : idealFill;
+    pass = contentM.pass;
+  }
+
+  const fillH = Math.round(fillPct * (H - 4));
+  const fillColor = pass ? `${color}55` : "#ef444455";
+  const idealY = Math.round((1 - idealFill) * (H - 4)) + 2;
+
+  let svg = "";
+  // Viewport frame
+  svg += `<rect x="2" y="2" width="${W - 4}" height="${H - 4}" rx="4" fill="#1e1e1e" stroke="${color}" stroke-width="1"/>`;
+  // Fill from bottom
+  svg += `<rect x="3" y="${H - 2 - fillH}" width="${W - 6}" height="${fillH}" rx="0 0 3 3" fill="${fillColor}"/>`;
+  // Ideal phi line
+  svg += `<line x1="2" y1="${idealY}" x2="${W - 2}" y2="${idealY}" stroke="${color}" stroke-width="1" stroke-dasharray="4,3"/>`;
+  svg += `<text x="${W - 4}" y="${idealY - 3}" text-anchor="end" fill="${color}" font-size="8" opacity="0.8">phi 61.8%</text>`;
+  // Actual percentage
+  svg += `<text x="${W / 2}" y="${H / 2 + 4}" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">${Math.round(fillPct * 100)}%</text>`;
+  svg += `<text x="${W / 2}" y="${H / 2 + 15}" text-anchor="middle" fill="#888" font-size="8">content fill</text>`;
+
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+}
+
+function renderNoiseVisual(a: AnalysisResult): string {
+  const W = 200, H = 70;
+  const color = CATEGORY_COLORS.noise;
+
+  const sizeM = a.measurements.find((m) => m.property.includes("largest/median"));
+  const countM = a.measurements.find((m) => m.property.includes("large/small"));
+  const clusterM = a.measurements.find((m) => m.property.includes("cluster"));
+
+  // Generate a scatter of dots representing element size distribution
+  let svg = "";
+  svg += `<rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="4" fill="#1e1e1e" stroke="${color}" stroke-width="0.5"/>`;
+
+  // Large dots (meaningful elements)
+  const largeCount = countM ? Math.min(Math.round(countM.actual_value_a), 8) : 4;
+  const smallCount = countM ? Math.min(Math.round(countM.actual_value_b), 15) : 6;
+
+  // Draw cluster zone if available
+  if (clusterM && clusterM.actual_value_a > 0) {
+    const clusterRatio = clusterM.actual_value_a / (clusterM.actual_value_a + clusterM.actual_value_b);
+    const clusterW = Math.round(clusterRatio * (W - 20));
+    svg += `<rect x="10" y="8" width="${clusterW}" height="${H - 16}" rx="6" fill="${color}15" stroke="${color}" stroke-width="0.5" stroke-dasharray="2,2"/>`;
+    svg += `<text x="${10 + clusterW / 2}" y="${H - 6}" text-anchor="middle" fill="${color}" font-size="7" opacity="0.6">cluster</text>`;
+  }
+
+  // Large element dots
+  for (let i = 0; i < largeCount; i++) {
+    const x = 20 + (i * (W - 40)) / Math.max(largeCount - 1, 1);
+    const y = 15 + (i % 3) * 14;
+    const r = 6 + (i === 0 ? 4 : 0); // Hero element is bigger
+    const dotColor = i === 0 ? color : `${color}aa`;
+    svg += `<circle cx="${x}" cy="${y}" r="${r}" fill="${dotColor}44" stroke="${dotColor}" stroke-width="1"/>`;
+  }
+
+  // Small element dots (noise)
+  for (let i = 0; i < smallCount; i++) {
+    const x = 15 + Math.random() * (W - 30);
+    const y = 10 + Math.random() * (H - 20);
+    svg += `<circle cx="${x}" cy="${y}" r="2" fill="#ef444466" stroke="#ef444488" stroke-width="0.5"/>`;
+  }
+
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+}
+
+function renderElementVisual(a: AnalysisResult): string {
+  const W = 200, H = 70;
+  const color = CATEGORY_COLORS.element;
+  const m = a.measurements[0];
+
+  let svg = `<rect x="2" y="2" width="${W - 4}" height="${H - 4}" rx="4" fill="${color}15" stroke="${color}" stroke-width="1"/>`;
+  if (m) {
+    // Show width/height as nested rectangles
+    const innerW = Math.round((W - 20) / (m.actual_ratio > 1 ? 1 : m.actual_ratio));
+    const innerH = Math.round((H - 20) / (m.actual_ratio > 1 ? m.actual_ratio : 1));
+    svg += `<rect x="${(W - innerW) / 2}" y="${(H - innerH) / 2}" width="${innerW}" height="${innerH}" rx="2" fill="${m.pass ? color + "33" : "#ef444433"}" stroke="${m.pass ? color : "#ef4444"}" stroke-width="1"/>`;
+    svg += `<text x="${W / 2}" y="${H / 2 + 4}" text-anchor="middle" fill="${color}" font-size="10" font-weight="600">${m.actual_ratio}x</text>`;
+  }
+  return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`;
+}
+
+function renderCategoryVisual(a: AnalysisResult): string {
+  switch (a.category) {
+    case "layout":     return renderLayoutVisual(a);
+    case "typography": return renderTypographyVisual(a);
+    case "spacing":    return renderSpacingVisual(a);
+    case "density":    return renderDensityVisual(a);
+    case "noise":      return renderNoiseVisual(a);
+    case "element":    return renderElementVisual(a);
+    default:           return "";
+  }
 }
 
 function renderMeasurementRow(m: Measurement): string {
@@ -45,16 +262,23 @@ function renderSection(section: SectionReport, index: number): string {
 
   let categoryRows = "";
   for (const a of section.analyses) {
+    if (a.measurements.length === 0) continue;
     const passCount = a.measurements.filter((m) => m.pass).length;
+    const catColor = CATEGORY_COLORS[a.category] ?? "#888";
+    const catLabel = CATEGORY_LABELS[a.category] ?? a.category;
+    const sc = scoreColor(a.score);
     categoryRows += `
-      <div class="cat-score">
-        <span class="cat-icon">${categoryIcon(a.category)}</span>
-        <span class="cat-name">${a.category}</span>
-        <span class="cat-bar-wrap">
-          <span class="cat-bar" style="width:${a.score}%;background:${a.score >= 80 ? "#22c55e" : a.score >= 60 ? "#eab308" : "#ef4444"}"></span>
-        </span>
-        <span class="cat-val">${a.score}</span>
-        <span class="cat-detail">${passCount}/${a.measurements.length} passing</span>
+      <div class="cat-card" style="border-left: 3px solid ${catColor}">
+        <div class="cat-visual">${renderCategoryVisual(a)}</div>
+        <div class="cat-info">
+          <div class="cat-name" style="color:${catColor}">${catLabel}</div>
+          <div class="cat-score-line">
+            <span class="cat-grade" style="background:${sc}">${a.score >= 90 ? "A" : a.score >= 80 ? "B" : a.score >= 70 ? "C" : a.score >= 60 ? "D" : "F"}</span>
+            <span class="cat-score-val">${a.score}/100</span>
+          </div>
+          <div class="cat-bar-wrap"><span class="cat-bar" style="width:${a.score}%;background:${catColor}"></span></div>
+          <div class="cat-detail">${passCount}/${a.measurements.length} passing</div>
+        </div>
       </div>`;
   }
 
@@ -122,14 +346,21 @@ export function generateHtmlReport(report: FullReport, fullPageScreenshot?: stri
   let overallCategories = "";
   for (const a of report.analyses) {
     const passCount = a.measurements.filter((m) => m.pass).length;
+    const catColor = CATEGORY_COLORS[a.category] ?? "#888";
+    const catLabel = CATEGORY_LABELS[a.category] ?? a.category;
+    const sc = scoreColor(a.score);
     overallCategories += `
-      <div class="overview-cat">
-        <div class="overview-cat-header">
-          <span>${categoryIcon(a.category)} ${a.category}</span>
-          <span class="overview-cat-score">${a.score}/100</span>
+      <div class="cat-card overview-cat-card" style="border-left: 3px solid ${catColor}">
+        <div class="cat-visual">${renderCategoryVisual(a)}</div>
+        <div class="cat-info">
+          <div class="cat-name" style="color:${catColor}">${catLabel}</div>
+          <div class="cat-score-line">
+            <span class="cat-grade" style="background:${sc}">${a.score >= 90 ? "A" : a.score >= 80 ? "B" : a.score >= 70 ? "C" : a.score >= 60 ? "D" : "F"}</span>
+            <span class="cat-score-val">${a.score}/100</span>
+          </div>
+          <div class="cat-bar-wrap"><span class="cat-bar" style="width:${a.score}%;background:${catColor}"></span></div>
+          <div class="overview-cat-detail">${passCount}/${a.measurements.length} proportions within tolerance</div>
         </div>
-        <div class="cat-bar-wrap"><span class="cat-bar" style="width:${a.score}%;background:${a.score >= 80 ? "#22c55e" : a.score >= 60 ? "#eab308" : "#ef4444"}"></span></div>
-        <div class="overview-cat-detail">${passCount}/${a.measurements.length} proportions within tolerance</div>
       </div>`;
   }
 
@@ -185,14 +416,25 @@ export function generateHtmlReport(report: FullReport, fullPageScreenshot?: stri
   .overview-cat-score { font-weight: 600; }
   .overview-cat-detail { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
 
-  /* Category bars */
-  .cat-score { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 12px; }
-  .cat-icon { font-size: 14px; width: 18px; text-align: center; }
-  .cat-name { width: 80px; text-transform: capitalize; }
-  .cat-bar-wrap { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
-  .cat-bar { height: 100%; border-radius: 3px; transition: width 0.3s; }
-  .cat-val { width: 28px; text-align: right; font-weight: 600; }
-  .cat-detail { color: var(--text-dim); font-size: 11px; }
+  /* Category cards */
+  .cat-card { display: flex; gap: 14px; align-items: center; padding: 12px 14px; background: var(--surface2); border-radius: 6px; margin-bottom: 8px; }
+  .cat-visual { flex-shrink: 0; }
+  .cat-visual svg { display: block; border-radius: 4px; }
+  .cat-info { flex: 1; min-width: 0; }
+  .cat-name { font-size: 12px; font-weight: 700; text-transform: capitalize; margin-bottom: 4px; }
+  .cat-score-line { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .cat-grade { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border-radius: 4px; font-size: 10px; font-weight: 800; color: #fff; }
+  .cat-score-val { font-size: 13px; font-weight: 600; }
+  .cat-bar-wrap { height: 4px; background: var(--bg); border-radius: 2px; overflow: hidden; margin-bottom: 3px; }
+  .cat-bar { height: 100%; border-radius: 2px; }
+  .cat-detail { color: var(--text-dim); font-size: 10px; }
+
+  /* Category scores grid in section */
+  .category-scores { padding: 16px 20px; border-bottom: 1px solid var(--border); display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px; }
+  @media (max-width: 700px) { .category-scores { grid-template-columns: 1fr; } }
+
+  /* Overview category cards */
+  .overview-cat-card { margin-bottom: 10px; }
 
   /* Recommendations */
   .recs-list { list-style: none; }
