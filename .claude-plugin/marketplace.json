@@ -1,0 +1,20 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "golden-ratio-tools",
+  "description": "Design validation tools powered by the golden ratio",
+  "owner": {
+    "name": "RAG-CONSULTING"
+  },
+  "plugins": [
+    {
+      "name": "golden-ratio-cli",
+      "description": "Validates website designs against golden ratio (φ ≈ 1.618) principles using Playwright. Analyzes layout, typography, spacing, and element proportions with annotated screenshots.",
+      "author": {
+        "name": "GIBBY"
+      },
+      "source": ".",
+      "category": "development",
+      "homepage": "https://github.com/RAG-CONSULTING/the-golden-ratio-CLI"
+    }
+  ]
+}

@@ -1,10 +1,11 @@
-import type { AnalysisResult, FullReport, Measurement } from "../engine/types.js";
+import type { AnalysisResult, FullReport, Measurement, SectionReport } from "../engine/types.js";
 import { gradeFromScore, scoreMeasurements } from "../engine/ratio-calculator.js";
 
 export function buildFullReport(
   url: string,
   viewport: { width: number; height: number },
-  analyses: AnalysisResult[]
+  analyses: AnalysisResult[],
+  sections?: SectionReport[]
 ): FullReport {
   const weights: Record<string, number> = {
     layout: 0.35,
@@ -26,20 +27,44 @@ export function buildFullReport(
   const allMeasurements = analyses.flatMap((a) => a.measurements);
   const sorted = [...allMeasurements].sort((a, b) => b.deviation_pct - a.deviation_pct);
 
-  const top_issues = sorted.filter((m) => !m.pass).slice(0, 10);
-  const top_strengths = [...allMeasurements]
-    .sort((a, b) => a.deviation_pct - b.deviation_pct)
+  // Deduplicate measurements with same element + property (from multiple sections)
+  const seen = new Set<string>();
+  const deduped = sorted.filter((m) => {
+    const key = `${m.element}|${m.property}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  const top_issues = deduped.filter((m) => !m.pass).slice(0, 10);
+  const top_strengths = deduped
     .filter((m) => m.pass)
+    .sort((a, b) => a.deviation_pct - b.deviation_pct)
     .slice(0, 5);
 
   const recommendations = top_issues.map(
     (m) => `${m.element} [${m.property}]: ${m.suggestion}`
   );
 
+  const sectionList = sections ?? [];
+  const first_contact: SectionReport = sectionList.length > 0
+    ? sectionList[0]
+    : {
+        label: "First Contact (viewport)",
+        scroll_y: 0,
+        viewport,
+        analyses,
+        score: overall_score,
+        grade: gradeFromScore(overall_score),
+        top_issues,
+      };
+
   return {
     url,
     viewport,
     timestamp: new Date().toISOString(),
+    first_contact,
+    sections: sectionList,
     analyses,
     overall_score,
     grade: gradeFromScore(overall_score),
@@ -53,6 +78,24 @@ export function formatAnalysisResult(result: AnalysisResult): string {
   return JSON.stringify(result, null, 2);
 }
 
+function formatSectionSummary(section: SectionReport) {
+  return {
+    label: section.label,
+    scroll_y: section.scroll_y,
+    score: section.score,
+    grade: section.grade,
+    category_scores: Object.fromEntries(
+      section.analyses.map((a) => [a.category, { score: a.score, summary: a.summary }])
+    ),
+    top_issues: section.top_issues.map((m) => ({
+      element: m.element,
+      property: m.property,
+      deviation_pct: m.deviation_pct,
+      suggestion: m.suggestion,
+    })),
+  };
+}
+
 export function formatFullReport(report: FullReport, format: "detailed" | "summary"): string {
   if (format === "summary") {
     return JSON.stringify(
@@ -61,6 +104,8 @@ export function formatFullReport(report: FullReport, format: "detailed" | "summa
         viewport: report.viewport,
         overall_score: report.overall_score,
         grade: report.grade,
+        first_contact: formatSectionSummary(report.first_contact),
+        sections: report.sections.map(formatSectionSummary),
         category_scores: Object.fromEntries(
           report.analyses.map((a) => [a.category, { score: a.score, summary: a.summary }])
         ),
@@ -76,5 +121,11 @@ export function formatFullReport(report: FullReport, format: "detailed" | "summa
       2
     );
   }
-  return JSON.stringify(report, null, 2);
+  // For detailed, strip screenshots from JSON (they're returned as images)
+  const output = {
+    ...report,
+    first_contact: { ...report.first_contact, screenshot: undefined },
+    sections: report.sections.map((s) => ({ ...s, screenshot: undefined })),
+  };
+  return JSON.stringify(output, null, 2);
 }

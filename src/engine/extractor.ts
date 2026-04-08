@@ -28,34 +28,92 @@ interface RawSpacing {
   paddingRight: number;
 }
 
+/** Viewport bounds for filtering elements to a scroll section */
+export interface ViewportBounds {
+  scrollY: number;
+  width: number;
+  height: number;
+}
+
+function isInViewport(rect: RawRect, bounds?: ViewportBounds): boolean {
+  if (!bounds) return true;
+  const top = rect.y;
+  const bottom = rect.y + rect.height;
+  const viewTop = bounds.scrollY;
+  const viewBottom = bounds.scrollY + bounds.height;
+  // Element overlaps the viewport
+  return bottom > viewTop && top < viewBottom;
+}
+
+/**
+ * Returns true if an element is a full-page wrapper (height spans well beyond
+ * the viewport). These elements' width/height ratios are meaningless per-section.
+ */
+function isFullPageWrapper(rect: RawRect, bounds?: ViewportBounds): boolean {
+  if (!bounds) return false;
+  // If the element is more than 2x the viewport height, it's a wrapper
+  return rect.height > bounds.height * 2;
+}
+
 // --- Layout Extraction ---
 
 export async function extractLayoutMeasurements(
   page: Page,
-  tolerance: number
+  tolerance: number,
+  bounds?: ViewportBounds
 ): Promise<Measurement[]> {
   const measurements: Measurement[] = [];
 
-  // Get body direct children bounding rects
+  // Get layout section bounding rects (absolute positions).
+  // Traverses past single-child wrapper elements (like div#root, main)
+  // to find the actual content sections.
   const rects: RawRect[] = await page.evaluate(() => {
-    const body = document.body;
-    const children = Array.from(body.children) as HTMLElement[];
+    const scrollY = window.scrollY;
+    const viewportHeight = window.innerHeight;
+
+    function getSelector(el: HTMLElement, fallback: string): string {
+      const tag = el.tagName.toLowerCase();
+      const id = el.id ? `#${el.id}` : "";
+      const cls = el.className && typeof el.className === "string"
+        ? `.${el.className.split(" ").filter(Boolean).join(".")}`
+        : "";
+      return `${tag}${id}${cls}` || fallback;
+    }
+
+    function isVisible(el: HTMLElement): boolean {
+      const style = window.getComputedStyle(el);
+      return style.display !== "none" && style.visibility !== "hidden";
+    }
+
+    // Walk down through single-child wrappers to find meaningful layout roots
+    function findLayoutRoot(el: HTMLElement): HTMLElement {
+      const visibleChildren = Array.from(el.children).filter(
+        (c) => isVisible(c as HTMLElement) && (c as HTMLElement).getBoundingClientRect().height > 0
+      ) as HTMLElement[];
+      // If there's exactly one visible child and it spans the full width,
+      // it's likely a wrapper — recurse into it
+      if (visibleChildren.length === 1) {
+        const child = visibleChildren[0];
+        const childRect = child.getBoundingClientRect();
+        const parentRect = el.getBoundingClientRect();
+        if (childRect.height > viewportHeight * 2 && childRect.width >= parentRect.width * 0.9) {
+          return findLayoutRoot(child);
+        }
+      }
+      return el;
+    }
+
+    const root = findLayoutRoot(document.body);
+    const children = Array.from(root.children) as HTMLElement[];
+
     return children
-      .filter((el) => {
-        const style = window.getComputedStyle(el);
-        return style.display !== "none" && style.visibility !== "hidden";
-      })
+      .filter((el) => isVisible(el) && el.getBoundingClientRect().height > 0)
       .map((el, i) => {
         const rect = el.getBoundingClientRect();
-        const tag = el.tagName.toLowerCase();
-        const id = el.id ? `#${el.id}` : "";
-        const cls = el.className && typeof el.className === "string"
-          ? `.${el.className.split(" ").filter(Boolean).join(".")}`
-          : "";
         return {
-          selector: `${tag}${id}${cls}` || `body > :nth-child(${i + 1})`,
+          selector: getSelector(el, `${getSelector(root, "body")} > :nth-child(${i + 1})`),
           x: rect.x,
-          y: rect.y,
+          y: rect.y + scrollY,
           width: rect.width,
           height: rect.height,
         };
@@ -63,9 +121,12 @@ export async function extractLayoutMeasurements(
       .filter((r) => r.width > 0 && r.height > 0);
   });
 
+  // Filter to elements within viewport bounds, excluding full-page wrappers
+  const filtered = rects.filter((r) => isInViewport(r, bounds) && !isFullPageWrapper(r, bounds));
+
   // Detect side-by-side columns (elements sharing same y position)
   const yGroups = new Map<number, RawRect[]>();
-  for (const rect of rects) {
+  for (const rect of filtered) {
     const roundedY = Math.round(rect.y / 5) * 5;
     const group = yGroups.get(roundedY) ?? [];
     group.push(rect);
@@ -94,9 +155,9 @@ export async function extractLayoutMeasurements(
   }
 
   // Check consecutive section height ratios
-  for (let i = 0; i < rects.length - 1; i++) {
-    const a = rects[i];
-    const b = rects[i + 1];
+  for (let i = 0; i < filtered.length - 1; i++) {
+    const a = filtered[i];
+    const b = filtered[i + 1];
     if (a.height > 50 && b.height > 50) {
       measurements.push(
         createMeasurement(
@@ -111,7 +172,7 @@ export async function extractLayoutMeasurements(
   }
 
   // Check width/height of major sections
-  for (const rect of rects) {
+  for (const rect of filtered) {
     if (rect.width > 100 && rect.height > 100) {
       measurements.push(
         createMeasurement(
@@ -133,31 +194,51 @@ export async function extractLayoutMeasurements(
 export async function extractTypographyMeasurements(
   page: Page,
   scopeSelector: string,
-  tolerance: number
+  tolerance: number,
+  bounds?: ViewportBounds
 ): Promise<Measurement[]> {
   const measurements: Measurement[] = [];
 
-  const typo: RawTypography[] = await page.evaluate((scope) => {
+  const typo: (RawTypography & { y: number; height: number })[] = await page.evaluate((scope) => {
     const root = document.querySelector(scope) ?? document.body;
     const selectors = ["h1", "h2", "h3", "h4", "h5", "h6", "p", "small"];
-    const results: { selector: string; fontSize: number; lineHeight: number }[] = [];
+    const results: { selector: string; fontSize: number; lineHeight: number; y: number; height: number }[] = [];
+    const scrollY = window.scrollY;
 
     for (const sel of selectors) {
-      const el = root.querySelector(sel) as HTMLElement | null;
-      if (el) {
-        const style = window.getComputedStyle(el);
+      // Find ALL instances, not just the first — needed for per-section filtering
+      const els = root.querySelectorAll(sel);
+      els.forEach((el, idx) => {
+        const htmlEl = el as HTMLElement;
+        const style = window.getComputedStyle(htmlEl);
+        const rect = htmlEl.getBoundingClientRect();
+        if (rect.height === 0) return;
+        // Build a descriptive selector using parent context when possible
+        const parent = htmlEl.closest("section, article, [id], [class]");
+        const parentHint = parent && parent !== htmlEl
+          ? (parent.id ? `#${parent.id} ` : parent.className && typeof parent.className === "string"
+            ? `.${parent.className.split(" ").filter(Boolean)[0]} ` : "")
+          : "";
+        const label = els.length > 1 ? `${parentHint}${sel}:nth(${idx + 1})` : sel;
         results.push({
-          selector: sel,
+          selector: label,
           fontSize: parseFloat(style.fontSize),
           lineHeight: parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.2,
+          y: rect.y + scrollY,
+          height: rect.height,
         });
-      }
+      });
     }
     return results;
   }, scopeSelector);
 
+  // Filter to elements within viewport bounds
+  const filtered = typo.filter((t) =>
+    isInViewport({ selector: t.selector, x: 0, y: t.y, width: 1, height: t.height }, bounds)
+  );
+
   // Check consecutive heading ratios
-  const headings = typo.filter((t) => t.selector.startsWith("h"));
+  const headings = filtered.filter((t) => t.selector.startsWith("h"));
   for (let i = 0; i < headings.length - 1; i++) {
     const larger = headings[i];
     const smaller = headings[i + 1];
@@ -175,7 +256,7 @@ export async function extractTypographyMeasurements(
   }
 
   // Check heading to body text ratio
-  const body = typo.find((t) => t.selector === "p");
+  const body = filtered.find((t) => t.selector === "p");
   if (body && headings.length > 0) {
     measurements.push(
       createMeasurement(
@@ -189,7 +270,7 @@ export async function extractTypographyMeasurements(
   }
 
   // Check line-height to font-size ratio for each element
-  for (const t of typo) {
+  for (const t of filtered) {
     if (t.lineHeight > 0 && t.fontSize > 0) {
       measurements.push(
         createMeasurement(
@@ -211,21 +292,44 @@ export async function extractTypographyMeasurements(
 export async function extractSpacingMeasurements(
   page: Page,
   scopeSelector: string,
-  tolerance: number
+  tolerance: number,
+  bounds?: ViewportBounds
 ): Promise<Measurement[]> {
   const measurements: Measurement[] = [];
 
-  const spacings: RawSpacing[] = await page.evaluate((scope) => {
+  const spacings: (RawSpacing & { y: number; height: number })[] = await page.evaluate((scope) => {
     const root = document.querySelector(scope) ?? document.body;
-    const children = Array.from(root.children) as HTMLElement[];
+    const scrollY = window.scrollY;
+    const viewportHeight = window.innerHeight;
+
+    function isVisible(el: HTMLElement): boolean {
+      const style = window.getComputedStyle(el);
+      return style.display !== "none" && el.getBoundingClientRect().height > 0;
+    }
+
+    // Walk past single-child full-page wrappers
+    function findSpacingRoot(el: HTMLElement): HTMLElement {
+      const visibleChildren = Array.from(el.children).filter(
+        (c) => isVisible(c as HTMLElement)
+      ) as HTMLElement[];
+      if (visibleChildren.length === 1) {
+        const child = visibleChildren[0];
+        if (child.getBoundingClientRect().height > viewportHeight * 2) {
+          return findSpacingRoot(child);
+        }
+      }
+      return el;
+    }
+
+    const spacingRoot = findSpacingRoot(root as HTMLElement);
+    const children = Array.from(spacingRoot.children) as HTMLElement[];
+
     return children
-      .filter((el) => {
-        const style = window.getComputedStyle(el);
-        return style.display !== "none" && el.getBoundingClientRect().height > 0;
-      })
-      .slice(0, 20) // limit to first 20 elements
+      .filter((el) => isVisible(el))
+      .slice(0, 30)
       .map((el, i) => {
         const style = window.getComputedStyle(el);
+        const rect = el.getBoundingClientRect();
         const tag = el.tagName.toLowerCase();
         const id = el.id ? `#${el.id}` : "";
         const cls = el.className && typeof el.className === "string"
@@ -233,6 +337,8 @@ export async function extractSpacingMeasurements(
           : "";
         return {
           selector: `${tag}${id}${cls}` || `${scope} > :nth-child(${i + 1})`,
+          y: rect.y + scrollY,
+          height: rect.height,
           marginTop: parseFloat(style.marginTop) || 0,
           marginBottom: parseFloat(style.marginBottom) || 0,
           marginLeft: parseFloat(style.marginLeft) || 0,
@@ -245,7 +351,12 @@ export async function extractSpacingMeasurements(
       });
   }, scopeSelector);
 
-  for (const s of spacings) {
+  // Filter to elements within viewport bounds
+  const filtered = spacings.filter((s) =>
+    isInViewport({ selector: s.selector, x: 0, y: s.y, width: 1, height: s.height }, bounds)
+  );
+
+  for (const s of filtered) {
     const verticalMargin = s.marginTop + s.marginBottom;
     const verticalPadding = s.paddingTop + s.paddingBottom;
     const horizPadding = s.paddingLeft + s.paddingRight;
@@ -278,9 +389,9 @@ export async function extractSpacingMeasurements(
   }
 
   // Consecutive element spacing ratios
-  for (let i = 0; i < spacings.length - 1; i++) {
-    const a = spacings[i];
-    const b = spacings[i + 1];
+  for (let i = 0; i < filtered.length - 1; i++) {
+    const a = filtered[i];
+    const b = filtered[i + 1];
     const gapA = a.marginBottom;
     const gapB = b.marginTop;
     // Use the combined gap between elements

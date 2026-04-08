@@ -1,8 +1,10 @@
 {
   "mcpServers": {
     "golden-ratio": {
-      "command": "npx",
-      "args": ["golden-ratio-cli"]
+      "command": "node",
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"],
+      "cwd": "${CLAUDE_PLUGIN_ROOT}",
+      "setup": "bash ${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh"
     }
   }
 }

@@ -8,7 +8,7 @@ import type { AnalysisResult } from "../engine/types.js";
 export function registerAnalyzeSpacing(server: McpServer) {
   server.tool(
     "analyze_spacing",
-    "Analyze margin and padding relationships for golden ratio harmony. Checks spacing ratios between related elements like sections, cards, and form groups.",
+    "Analyze margin and padding relationships for golden ratio harmony. Checks spacing ratios between related elements like sections, cards, and form groups. Returns an annotated screenshot with visual overlays.",
     {
       url: z.string().url().describe("URL of the page to analyze (e.g. http://localhost:3000)"),
       selector: z.string().default("body").describe("CSS selector to scope analysis. Defaults to 'body'"),
@@ -18,8 +18,12 @@ export function registerAnalyzeSpacing(server: McpServer) {
     },
     async ({ url, selector, tolerance, viewport_width, viewport_height }) => {
       try {
-        const measurements = await analyzePage(url, viewport_width, viewport_height, (page) =>
-          extractSpacingMeasurements(page, selector, tolerance)
+        const { data: measurements, screenshot } = await analyzePage(
+          url,
+          viewport_width,
+          viewport_height,
+          (page) => extractSpacingMeasurements(page, selector, tolerance),
+          (m) => m
         );
 
         const result: AnalysisResult = {
@@ -30,7 +34,10 @@ export function registerAnalyzeSpacing(server: McpServer) {
         };
 
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+          content: [
+            { type: "image" as const, data: screenshot, mimeType: "image/png" },
+            { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          ],
         };
       } catch (err) {
         return {

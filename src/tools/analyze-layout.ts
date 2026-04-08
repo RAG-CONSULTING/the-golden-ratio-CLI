@@ -8,7 +8,7 @@ import type { AnalysisResult } from "../engine/types.js";
 export function registerAnalyzeLayout(server: McpServer) {
   server.tool(
     "analyze_layout",
-    "Analyze full page layout for golden ratio proportions. Checks content/sidebar width ratios, section height ratios, and major element dimensions.",
+    "Analyze full page layout for golden ratio proportions. Checks content/sidebar width ratios, section height ratios, and major element dimensions. Returns an annotated screenshot with visual overlays.",
     {
       url: z.string().url().describe("URL of the page to analyze (e.g. http://localhost:3000)"),
       viewport_width: z.number().int().min(320).max(3840).default(1440).describe("Viewport width in pixels"),
@@ -17,8 +17,12 @@ export function registerAnalyzeLayout(server: McpServer) {
     },
     async ({ url, viewport_width, viewport_height, tolerance }) => {
       try {
-        const measurements = await analyzePage(url, viewport_width, viewport_height, (page) =>
-          extractLayoutMeasurements(page, tolerance)
+        const { data: measurements, screenshot } = await analyzePage(
+          url,
+          viewport_width,
+          viewport_height,
+          (page) => extractLayoutMeasurements(page, tolerance),
+          (m) => m
         );
 
         const result: AnalysisResult = {
@@ -29,7 +33,10 @@ export function registerAnalyzeLayout(server: McpServer) {
         };
 
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+          content: [
+            { type: "image" as const, data: screenshot, mimeType: "image/png" },
+            { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          ],
         };
       } catch (err) {
         return {

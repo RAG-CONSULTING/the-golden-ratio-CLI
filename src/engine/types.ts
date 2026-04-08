@@ -20,10 +20,23 @@ export interface AnalysisResult {
   summary: string;
 }
 
+export interface SectionReport {
+  label: string;
+  scroll_y: number;
+  viewport: { width: number; height: number };
+  analyses: AnalysisResult[];
+  score: number;
+  grade: string;
+  top_issues: Measurement[];
+  screenshot?: string;
+}
+
 export interface FullReport {
   url: string;
   viewport: { width: number; height: number };
   timestamp: string;
+  first_contact: SectionReport;
+  sections: SectionReport[];
   analyses: AnalysisResult[];
   overall_score: number;
   grade: string;

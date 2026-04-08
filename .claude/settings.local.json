@@ -7,7 +7,11 @@
       "Bash(npx vitest:*)",
       "Bash(npx tsc:*)",
       "Bash(npx playwright:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(node scripts/run-report.js \"https://jongibby.com/\")",
+      "Bash(curl -s \"https://anthropic.com/claude-code/marketplace.schema.json\")",
+      "Bash(chmod +x \"C:/Users/GIBBY/Desktop/claude_code/projects/2026-04-07_the_golden_ratio_CLI/the-golden-ratio-CLI/scripts/setup.sh\")",
+      "Bash(npm run:*)"
     ]
   }
 }

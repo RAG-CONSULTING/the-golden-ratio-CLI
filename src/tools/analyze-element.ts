@@ -8,7 +8,7 @@ import type { AnalysisResult } from "../engine/types.js";
 export function registerAnalyzeElement(server: McpServer) {
   server.tool(
     "analyze_element",
-    "Analyze a specific element's proportions against the golden ratio. Checks width/height ratio, padding proportions, and relationship to parent container.",
+    "Analyze a specific element's proportions against the golden ratio. Checks width/height ratio, padding proportions, and relationship to parent container. Returns an annotated screenshot with visual overlays.",
     {
       url: z.string().url().describe("URL of the page to analyze (e.g. http://localhost:3000)"),
       selector: z.string().describe("CSS selector for the element (e.g. '.hero-card', '#main-modal')"),
@@ -19,8 +19,12 @@ export function registerAnalyzeElement(server: McpServer) {
     },
     async ({ url, selector, include_children, tolerance, viewport_width, viewport_height }) => {
       try {
-        const measurements = await analyzePage(url, viewport_width, viewport_height, (page) =>
-          extractElementMeasurements(page, selector, include_children, tolerance)
+        const { data: measurements, screenshot } = await analyzePage(
+          url,
+          viewport_width,
+          viewport_height,
+          (page) => extractElementMeasurements(page, selector, include_children, tolerance),
+          (m) => m
         );
 
         if (measurements.length === 0) {
@@ -46,7 +50,10 @@ export function registerAnalyzeElement(server: McpServer) {
         };
 
         return {
-          content: [{ type: "text" as const, text: JSON.stringify(result, null, 2) }],
+          content: [
+            { type: "image" as const, data: screenshot, mimeType: "image/png" },
+            { type: "text" as const, text: JSON.stringify(result, null, 2) },
+          ],
         };
       } catch (err) {
         return {

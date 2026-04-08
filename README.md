@@ -4,7 +4,20 @@ An MCP server plugin for Claude Code that validates website designs against gold
 
 ## Install
 
-Add to your `.claude/mcp.json` (global) or project `.mcp.json`:
+### Claude Code (recommended)
+
+Two commands inside Claude Code:
+
+```
+/plugin marketplace add RAG-CONSULTING/the-golden-ratio-CLI
+/plugin install golden-ratio-cli
+```
+
+That's it. Dependencies and Chromium are installed automatically on first run.
+
+### Manual
+
+If you prefer to configure the MCP server directly, add to your `.claude/mcp.json` (global) or project `.mcp.json`:
 
 ```json
 {
@@ -16,8 +29,6 @@ Add to your `.claude/mcp.json` (global) or project `.mcp.json`:
   }
 }
 ```
-
-That's it. Chromium is downloaded automatically on first run.
 
 ## Tools
 
@@ -71,7 +82,13 @@ Checks a specific element's width/height ratio, padding proportions, and relatio
 
 ### `generate_report`
 
-Runs all analyses and produces a comprehensive scored report with an overall grade (A-F).
+Runs all analyses by scrolling through the entire page section-by-section. Each viewport-height frame is analyzed independently, with the first frame reported as the **"First Contact"** — the above-the-fold view users see on initial page load.
+
+The report includes:
+- A full-page annotated screenshot with golden ratio overlays
+- Per-section annotated screenshots, each with its own grade
+- A "First Contact" score highlighting the initial viewport impression
+- Merged overall scores across all sections
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
@@ -80,6 +97,25 @@ Runs all analyses and produces a comprehensive scored report with an overall gra
 | `viewport_height` | number | 900 | Viewport height in pixels |
 | `tolerance` | number | 0.10 | Acceptable deviation from φ |
 | `format` | `"detailed"` \| `"summary"` | `"detailed"` | Summary shows only scores and top issues |
+
+#### Section-by-section analysis
+
+The report divides the page into viewport-height sections and scores each one:
+
+```
+First Contact (viewport):  A   (score: 92)
+  layout:     95  — hero 61.8% / sidebar 38.2% ✓
+  typography: 88  — h1/h2 ratio 1.55
+  spacing:    90
+
+Section 2 (scroll 1):      B+  (score: 84)
+Section 3 (scroll 2):      B   (score: 80)
+Footer zone:                C+  (score: 72)
+
+Overall:                    B+  (score: 82)
+```
+
+This matters because the golden ratio relationships users perceive on first load carry more weight for first impressions than content further down the page. The individual tool analyzers (`analyze_layout`, `analyze_typography`, `analyze_spacing`) still operate on the full page for targeted audits.
 
 ## What It Measures
 
