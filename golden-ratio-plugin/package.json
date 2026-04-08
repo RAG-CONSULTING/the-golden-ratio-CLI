@@ -1,34 +1,12 @@
 {
-  "name": "golden-ratio-cli",
+  "name": "golden-ratio-cli-plugin",
   "version": "0.1.0",
-  "description": "MCP server plugin for Claude Code that validates website designs against golden ratio principles using Playwright",
+  "private": true,
+  "description": "MCP server plugin — golden ratio design validation",
   "type": "module",
-  "bin": {
-    "golden-ratio-cli": "./dist/index.js"
-  },
-  "files": [
-    "dist/",
-    "scripts/"
-  ],
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "start": "node dist/index.js",
-    "postinstall": "node scripts/postinstall.js",
-    "prepublishOnly": "npm run build",
-    "test": "vitest run",
-    "test:watch": "vitest"
-  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "playwright-core": "^1.52.0",
     "zod": "^3.24.0"
-  },
-  "devDependencies": {
-    "@types/node": "^22.0.0",
-    "playwright": "^1.52.0",
-    "typescript": "^5.8.0",
-    "vitest": "^3.1.0"
-  },
-  "license": "MIT"
+  }
 }

@@ -67,10 +67,14 @@ export function createMeasurement(
   };
 }
 
-export function gradeFromScore(score: number): string {
-  if (score >= 90) return "A";
-  if (score >= 80) return "B";
-  if (score >= 70) return "C";
-  if (score >= 60) return "D";
+export function gradeFromScore(
+  score: number,
+  thresholds?: { A: number; B: number; C: number; D: number }
+): string {
+  const t = thresholds ?? { A: 90, B: 80, C: 70, D: 60 };
+  if (score >= t.A) return "A";
+  if (score >= t.B) return "B";
+  if (score >= t.C) return "C";
+  if (score >= t.D) return "D";
   return "F";
 }
