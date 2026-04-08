@@ -25,7 +25,21 @@
       "Bash(mkdir -p \"C:/Users/GIBBY/.claude/plugins/cache/golden-ratio-tools/golden-ratio-cli/0.1.0/\")",
       "Bash(cp -r \"C:/Users/GIBBY/.claude/plugins/marketplaces/golden-ratio-tools/golden-ratio-plugin/\"* \"C:/Users/GIBBY/.claude/plugins/cache/golden-ratio-tools/golden-ratio-cli/0.1.0/\")",
       "Bash(cp -r \"C:/Users/GIBBY/.claude/plugins/marketplaces/golden-ratio-tools/golden-ratio-plugin/.claude-plugin\" \"C:/Users/GIBBY/.claude/plugins/cache/golden-ratio-tools/golden-ratio-cli/0.1.0/\")",
-      "Bash(cp \"C:/Users/GIBBY/.claude/plugins/marketplaces/golden-ratio-tools/golden-ratio-plugin/.mcp.json\" \"C:/Users/GIBBY/.claude/plugins/cache/golden-ratio-tools/golden-ratio-cli/0.1.0/\")"
+      "Bash(cp \"C:/Users/GIBBY/.claude/plugins/marketplaces/golden-ratio-tools/golden-ratio-plugin/.mcp.json\" \"C:/Users/GIBBY/.claude/plugins/cache/golden-ratio-tools/golden-ratio-cli/0.1.0/\")",
+      "Bash([ -d node_modules ])",
+      "Bash(rm -f package-lock.json)",
+      "Bash(rm -rf node_modules)",
+      "Bash(timeout 5 node dist/index.js)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(node scripts/run-report.js \"https://jongibby.com/\" portfolio)",
+      "mcp__plugin_playwright_playwright__browser_navigate",
+      "Bash(npx http-server:*)",
+      "mcp__plugin_playwright_playwright__browser_take_screenshot",
+      "mcp__plugin_playwright_playwright__browser_press_key",
+      "mcp__plugin_playwright_playwright__browser_click",
+      "mcp__plugin_playwright_playwright__browser_evaluate",
+      "mcp__plugin_playwright_playwright__browser_run_code",
+      "mcp__plugin_playwright_playwright__browser_close"
     ]
   },
   "enabledPlugins": {}

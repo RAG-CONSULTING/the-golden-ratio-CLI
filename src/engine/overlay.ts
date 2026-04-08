@@ -1,5 +1,5 @@
 import type { Page } from "playwright-core";
-import type { Measurement } from "./types.js";
+import type { Measurement, SpiralOrigin } from "./types.js";
 
 /**
  * Injects golden ratio visual overlays onto the page and takes a screenshot.
@@ -11,9 +11,11 @@ import type { Measurement } from "./types.js";
 export async function captureWithOverlay(
   page: Page,
   measurements: Measurement[],
-  scrollY?: number
+  scrollY?: number,
+  spiralOrigin?: SpiralOrigin
 ): Promise<string> {
   // Inject overlay container, styles, and annotations
+  const origin = spiralOrigin ?? "bottom-right";
   await page.evaluate((data) => {
     const overlay = document.createElement("div");
     overlay.id = "gr-overlay";
@@ -407,134 +409,142 @@ export async function captureWithOverlay(
     }
 
     // --- Golden Ratio Template Overlay ---
-    // True golden rectangle subdivision: cut squares from alternating sides,
-    // draw grid lines at each cut, and render the golden spiral as connected
-    // SVG quarter-circle arcs through each square.
+    // φ-based golden rectangle subdivision with connected spiral.
+    // Splits at 1/φ of each dimension (not true squares) so the recursion
+    // continues for many levels regardless of viewport aspect ratio.
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const goldenColor = "rgba(234, 179, 8, 0.45)";
-    const goldenColorFaint = "rgba(234, 179, 8, 0.18)";
-    const spiralColor = "rgba(234, 179, 8, 0.7)";
+    const phi = 1.618;
+    const goldenColor = "rgba(234, 179, 8, 0.5)";
+    const spiralColor = "rgba(234, 179, 8, 0.75)";
 
-    // --- Step 1: Compute square subdivision ---
-    // At each step, cut a square (side = shorter dimension) from the rectangle.
-    // Direction cycle (clockwise): 0=left, 1=top, 2=right, 3=bottom
-    interface SquareStep {
-      sx: number; sy: number; size: number;  // square position & side length
-      cx: number; cy: number;                // arc center (corner shared with remaining rect)
-      startX: number; startY: number;        // arc start point
-      endX: number; endY: number;            // arc end point
+    // Direction cycles based on spiral convergence point
+    // 0=cut-left, 1=cut-top, 2=cut-right, 3=cut-bottom
+    const DIRECTION_CYCLES: Record<string, number[]> = {
+      "bottom-right": [0, 1, 2, 3],  // cut left→top→right→bottom, converge bottom-right
+      "top-right":    [0, 3, 2, 1],  // cut left→bottom→right→top, converge top-right
+      "bottom-left":  [2, 1, 0, 3],  // cut right→top→left→bottom, converge bottom-left
+      "top-left":     [2, 3, 0, 1],  // cut right→bottom→left→top, converge top-left
+    };
+    const SWEEP_FLAGS: Record<string, number> = {
+      "bottom-right": 1, "top-left": 1,     // clockwise
+      "top-right": 0, "bottom-left": 0,     // counter-clockwise
+    };
+    const dirCycle = DIRECTION_CYCLES[data.spiralOrigin] || DIRECTION_CYCLES["bottom-right"];
+    const sweepFlag = SWEEP_FLAGS[data.spiralOrigin] ?? 1;
+
+    interface ArcStep {
+      radius: number;
+      endX: number; endY: number;
     }
-    const steps: SquareStep[] = [];
+    const arcSteps: ArcStep[] = [];
+    let spiralStartX = 0, spiralStartY = 0;
 
     let rx = 0, ry = sY, rw = vw, rh = vh;
-    const maxSteps = 9;
+    const maxSteps = 13;
 
-    for (let i = 0; i < maxSteps && rw > 5 && rh > 5; i++) {
-      const dir = i % 4;
-      const size = Math.min(rw, rh); // square side = shorter dimension
-
-      let sx: number, sy: number;    // square top-left
-      let cx: number, cy: number;    // arc center
-      let startX: number, startY: number;
-      let endX: number, endY: number;
+    for (let i = 0; i < maxSteps && rw > 2 && rh > 2; i++) {
+      const dir = dirCycle[i % 4];
+      // φ-based split: cut portion = longer_dim / φ along the split axis
+      let size: number = 0;
+      // Line opacity fades with depth
+      const opacity = Math.max(0.12, 0.55 - i * 0.04);
+      const lineColor = `rgba(234, 179, 8, ${opacity})`;
 
       switch (dir) {
-        case 0: // Cut square from LEFT
-          sx = rx; sy = ry;
-          cx = rx + size; cy = ry + rh;      // bottom-right of square
-          startX = rx; startY = ry + rh;      // bottom-left
-          endX = rx + size; endY = ry;         // top-right (of square area, clamped to rect)
-          // Draw vertical grid line at right edge of square
-          const line0 = document.createElement("div");
-          line0.className = "gr-guide";
-          line0.style.cssText = `left:${rx + size}px;top:${ry}px;width:0;height:${rh}px;border-right:1px solid ${i < 2 ? goldenColor : goldenColorFaint};`;
-          overlay.appendChild(line0);
-          // Update remaining rect
+        case 0: { // Cut from LEFT
+          size = Math.round(rw / phi);
+          // Grid line at right edge of cut
+          const line = document.createElement("div");
+          line.className = "gr-guide";
+          line.style.cssText = `left:${rx + size}px;top:${ry}px;width:0;height:${rh}px;border-right:1px solid ${lineColor};`;
+          overlay.appendChild(line);
+          // Arc: sweep from bottom-left to top-right
+          if (i === 0) { spiralStartX = rx; spiralStartY = ry + rh; }
+          arcSteps.push({ radius: size, endX: rx + size, endY: ry });
           rx += size; rw -= size;
           break;
-
-        case 1: // Cut square from TOP
-          sx = rx; sy = ry;
-          cx = rx; cy = ry + size;             // bottom-left of square
-          startX = rx; startY = ry;            // top-left
-          endX = rx + rw; endY = ry + size;    // bottom-right
-          const line1 = document.createElement("div");
-          line1.className = "gr-guide";
-          line1.style.cssText = `left:${rx}px;top:${ry + size}px;width:${rw}px;height:0;border-bottom:1px solid ${i < 2 ? goldenColor : goldenColorFaint};`;
-          overlay.appendChild(line1);
+        }
+        case 1: { // Cut from TOP
+          size = Math.round(rh / phi);
+          const line = document.createElement("div");
+          line.className = "gr-guide";
+          line.style.cssText = `left:${rx}px;top:${ry + size}px;width:${rw}px;height:0;border-bottom:1px solid ${lineColor};`;
+          overlay.appendChild(line);
+          // Arc: sweep from top-left to bottom-right
+          if (i === 0) { spiralStartX = rx; spiralStartY = ry; }
+          arcSteps.push({ radius: size, endX: rx + rw, endY: ry + size });
           ry += size; rh -= size;
           break;
-
-        case 2: // Cut square from RIGHT
-          sx = rx + rw - size; sy = ry;
-          cx = rx + rw - size; cy = ry;        // top-left of square
-          startX = rx + rw; startY = ry;       // top-right
-          endX = rx + rw - size; endY = ry + rh; // bottom-left of square
-          const line2 = document.createElement("div");
-          line2.className = "gr-guide";
-          line2.style.cssText = `left:${rx + rw - size}px;top:${ry}px;width:0;height:${rh}px;border-right:1px solid ${i < 2 ? goldenColor : goldenColorFaint};`;
-          overlay.appendChild(line2);
+        }
+        case 2: { // Cut from RIGHT
+          size = Math.round(rw / phi);
+          const cutX = rx + rw - size;
+          const line = document.createElement("div");
+          line.className = "gr-guide";
+          line.style.cssText = `left:${cutX}px;top:${ry}px;width:0;height:${rh}px;border-right:1px solid ${lineColor};`;
+          overlay.appendChild(line);
+          // Arc: sweep from top-right to bottom-left
+          if (i === 0) { spiralStartX = rx + rw; spiralStartY = ry; }
+          arcSteps.push({ radius: size, endX: cutX, endY: ry + rh });
           rw -= size;
           break;
-
-        case 3: // Cut square from BOTTOM
-          sx = rx; sy = ry + rh - size;
-          cx = rx + rw; cy = ry + rh - size;  // top-right of square
-          startX = rx + rw; startY = ry + rh;  // bottom-right
-          endX = rx; endY = ry + rh - size;     // top-left of square
-          const line3 = document.createElement("div");
-          line3.className = "gr-guide";
-          line3.style.cssText = `left:${rx}px;top:${ry + rh - size}px;width:${rw}px;height:0;border-bottom:1px solid ${i < 2 ? goldenColor : goldenColorFaint};`;
-          overlay.appendChild(line3);
+        }
+        case 3: { // Cut from BOTTOM
+          size = Math.round(rh / phi);
+          const cutY = ry + rh - size;
+          const line = document.createElement("div");
+          line.className = "gr-guide";
+          line.style.cssText = `left:${rx}px;top:${cutY}px;width:${rw}px;height:0;border-bottom:1px solid ${lineColor};`;
+          overlay.appendChild(line);
+          // Arc: sweep from bottom-right to top-left
+          if (i === 0) { spiralStartX = rx + rw; spiralStartY = ry + rh; }
+          arcSteps.push({ radius: size, endX: rx, endY: cutY });
           rh -= size;
           break;
+        }
       }
 
-      steps.push({ sx: sx!, sy: sy!, size, cx: cx!, cy: cy!, startX: startX!, startY: startY!, endX: endX!, endY: endY! });
+      // Labels on the first two primary splits
+      if (i === 0) {
+        const lbl = document.createElement("div");
+        lbl.className = "gr-dim-label";
+        lbl.style.cssText = `left:${size + 4}px;top:${sY + 4}px;background:rgba(234,179,8,0.75);font-size:10px;`;
+        lbl.textContent = `φ ${size}px | ${vw - size}px`;
+        overlay.appendChild(lbl);
+      }
+      if (i === 1) {
+        const lbl = document.createElement("div");
+        lbl.className = "gr-dim-label";
+        lbl.style.cssText = `left:${rx + 4}px;top:${ry + 4}px;background:rgba(234,179,8,0.75);font-size:10px;`;
+        lbl.textContent = `φ ${size}px | ${vh - size}px`;
+        overlay.appendChild(lbl);
+      }
     }
 
-    // --- Step 2: Draw the golden spiral as an SVG path ---
-    // Each step contributes a quarter-circle arc. Arcs connect end-to-end.
-    if (steps.length > 0) {
+    // --- Draw the golden spiral as a single connected SVG path ---
+    if (arcSteps.length > 0) {
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
       svg.setAttribute("width", String(vw));
       svg.setAttribute("height", String(document.documentElement.scrollHeight));
       svg.style.cssText = "position:absolute;top:0;left:0;pointer-events:none;z-index:999998;overflow:visible;";
 
-      let pathD = `M ${steps[0].startX} ${steps[0].startY}`;
-      for (const step of steps) {
-        // SVG arc: A rx ry x-rotation large-arc-flag sweep-flag endX endY
-        // Quarter circle (90°), clockwise sweep
-        pathD += ` A ${step.size} ${step.size} 0 0 1 ${step.endX} ${step.endY}`;
+      // Build path: start point, then connected quarter-circle arcs
+      let pathD = `M ${spiralStartX} ${spiralStartY}`;
+      for (const arc of arcSteps) {
+        // SVG arc: A rx ry rotation large-arc-flag sweep-flag(1=clockwise) endX endY
+        pathD += ` A ${arc.radius} ${arc.radius} 0 0 ${sweepFlag} ${arc.endX} ${arc.endY}`;
       }
 
       const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
       path.setAttribute("d", pathD);
       path.setAttribute("fill", "none");
       path.setAttribute("stroke", spiralColor);
-      path.setAttribute("stroke-width", "2.5");
+      path.setAttribute("stroke-width", "2");
       path.setAttribute("stroke-linecap", "round");
       svg.appendChild(path);
 
       overlay.appendChild(svg);
-    }
-
-    // --- Step 3: Labels on primary splits ---
-    if (steps.length >= 2) {
-      const s0 = steps[0];
-      const lbl0 = document.createElement("div");
-      lbl0.className = "gr-dim-label";
-      lbl0.style.cssText = `left:${s0.sx + s0.size + 4}px;top:${s0.sy + 4}px;background:rgba(234,179,8,0.7);font-size:9px;`;
-      lbl0.textContent = `φ ${s0.size}px | ${vw - s0.size}px`;
-      overlay.appendChild(lbl0);
-
-      const s1 = steps[1];
-      const lbl1 = document.createElement("div");
-      lbl1.className = "gr-dim-label";
-      lbl1.style.cssText = `left:${s1.sx + 4}px;top:${s1.sy + s1.size + 4}px;background:rgba(234,179,8,0.7);font-size:9px;`;
-      lbl1.textContent = `φ ${s1.size}px | ${vh - s1.size}px`;
-      overlay.appendChild(lbl1);
     }
 
     // Outer viewport rectangle border
@@ -542,7 +552,7 @@ export async function captureWithOverlay(
     outerRect.style.cssText = `position:absolute;pointer-events:none;left:0;top:${sY}px;width:${vw}px;height:${vh}px;border:2px solid ${goldenColor};box-sizing:border-box;`;
     overlay.appendChild(outerRect);
 
-  }, { measurements });
+  }, { measurements, spiralOrigin: origin });
 
   // Scroll to position if specified, then capture viewport; otherwise full-page
   if (scrollY !== undefined) {

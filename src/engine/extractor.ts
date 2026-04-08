@@ -195,13 +195,15 @@ export async function extractTypographyMeasurements(
   page: Page,
   scopeSelector: string,
   tolerance: number,
-  bounds?: ViewportBounds
+  bounds?: ViewportBounds,
+  customSelectors?: string[]
 ): Promise<Measurement[]> {
   const measurements: Measurement[] = [];
+  const typoSelectors = customSelectors ?? ["h1", "h2", "h3", "h4", "h5", "h6", "p", "small"];
 
-  const typo: (RawTypography & { y: number; height: number })[] = await page.evaluate((scope) => {
+  const typo: (RawTypography & { y: number; height: number })[] = await page.evaluate(({ scope, sels }) => {
     const root = document.querySelector(scope) ?? document.body;
-    const selectors = ["h1", "h2", "h3", "h4", "h5", "h6", "p", "small"];
+    const selectors = sels;
     const results: { selector: string; fontSize: number; lineHeight: number; y: number; height: number }[] = [];
     const scrollY = window.scrollY;
 
@@ -230,7 +232,7 @@ export async function extractTypographyMeasurements(
       });
     }
     return results;
-  }, scopeSelector);
+  }, { scope: scopeSelector, sels: typoSelectors });
 
   // Filter to elements within viewport bounds
   const filtered = typo.filter((t) =>
@@ -293,11 +295,13 @@ export async function extractSpacingMeasurements(
   page: Page,
   scopeSelector: string,
   tolerance: number,
-  bounds?: ViewportBounds
+  bounds?: ViewportBounds,
+  childLimit?: number
 ): Promise<Measurement[]> {
   const measurements: Measurement[] = [];
 
-  const spacings: (RawSpacing & { y: number; height: number })[] = await page.evaluate((scope) => {
+  const limit = childLimit ?? 30;
+  const spacings: (RawSpacing & { y: number; height: number })[] = await page.evaluate(({ scope, maxChildren }) => {
     const root = document.querySelector(scope) ?? document.body;
     const scrollY = window.scrollY;
     const viewportHeight = window.innerHeight;
@@ -326,7 +330,7 @@ export async function extractSpacingMeasurements(
 
     return children
       .filter((el) => isVisible(el))
-      .slice(0, 30)
+      .slice(0, maxChildren)
       .map((el, i) => {
         const style = window.getComputedStyle(el);
         const rect = el.getBoundingClientRect();
@@ -349,7 +353,7 @@ export async function extractSpacingMeasurements(
           paddingRight: parseFloat(style.paddingRight) || 0,
         };
       });
-  }, scopeSelector);
+  }, { scope: scopeSelector, maxChildren: limit });
 
   // Filter to elements within viewport bounds
   const filtered = spacings.filter((s) =>

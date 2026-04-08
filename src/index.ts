@@ -16,9 +16,12 @@ const server = new McpServer(
   {
     instructions:
       "Golden ratio (φ ≈ 1.618) validation tools for web design. " +
-      "Use analyze_layout for a full page audit, analyze_typography for font scale checks, " +
-      "analyze_spacing for margin/padding harmony, analyze_element for a specific CSS selector, " +
-      "or generate_report for a comprehensive scored report combining all analyses. " +
+      "IMPORTANT: Before running any analysis, ask the user: " +
+      "(1) What type of page is this? (landing page, SaaS/dashboard, portfolio, e-commerce, blog, or general) " +
+      "(2) What is the primary goal — full audit, or focus on typography/spacing/layout? " +
+      "(3) Where should the user's eye be drawn on this page? (helps set spiral orientation) " +
+      "Use the page_type parameter to apply context-appropriate weights, selectors, and tolerances. " +
+      "Use generate_report for comprehensive section-by-section analysis, or individual tools for focused checks. " +
       "All tools require a URL of a running website (e.g. http://localhost:3000).",
   }
 );

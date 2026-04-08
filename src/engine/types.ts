@@ -36,6 +36,7 @@ export interface FullReport {
   url: string;
   viewport: { width: number; height: number };
   timestamp: string;
+  page_type?: PageType;
   first_contact: SectionReport;
   sections: SectionReport[];
   analyses: AnalysisResult[];
@@ -44,4 +45,27 @@ export interface FullReport {
   top_issues: Measurement[];
   top_strengths: Measurement[];
   recommendations: string[];
+}
+
+// --- Context-Aware Analysis Types ---
+
+export type PageType = "general" | "landing" | "saas" | "portfolio" | "ecommerce" | "blog";
+
+export type SpiralOrigin = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+export interface CategoryWeights {
+  layout: number;
+  typography: number;
+  spacing: number;
+  element: number;
+}
+
+export interface PageContext {
+  pageType: PageType;
+  weights: CategoryWeights;
+  tolerance: number;
+  typographySelectors: string[];
+  spacingChildLimit: number;
+  spiralOrigin: SpiralOrigin;
+  gradeThresholds: { A: number; B: number; C: number; D: number };
 }

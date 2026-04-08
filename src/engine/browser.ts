@@ -1,5 +1,5 @@
 import { chromium, type Browser, type Page } from "playwright-core";
-import type { Measurement, AnalysisResult, SectionReport } from "./types.js";
+import type { Measurement, AnalysisResult, SectionReport, SpiralOrigin } from "./types.js";
 import { captureWithOverlay } from "./overlay.js";
 import { gradeFromScore } from "./ratio-calculator.js";
 import type { ViewportBounds } from "./extractor.js";
@@ -63,7 +63,9 @@ export async function analyzePageSections(
   viewportWidth: number,
   viewportHeight: number,
   sectionExtractor: (page: Page, bounds: ViewportBounds) => Promise<AnalysisResult[]>,
-  getMeasurements: (analyses: AnalysisResult[]) => Measurement[]
+  getMeasurements: (analyses: AnalysisResult[]) => Measurement[],
+  spiralOrigin?: SpiralOrigin,
+  gradeThresholds?: { A: number; B: number; C: number; D: number }
 ): Promise<SectionAnalysisResult> {
   const b = await getBrowser();
   const page = await b.newPage();
@@ -97,7 +99,7 @@ export async function analyzePageSections(
       const measurements = getMeasurements(analyses);
 
       // Capture screenshot at this scroll position with overlay
-      const screenshot = await captureWithOverlay(page, measurements, scrollY);
+      const screenshot = await captureWithOverlay(page, measurements, scrollY, spiralOrigin);
 
       const allMeasurements = analyses.flatMap((a) => a.measurements);
       const totalScore = analyses.length > 0
@@ -116,7 +118,7 @@ export async function analyzePageSections(
         viewport: { width: viewportWidth, height: viewportHeight },
         analyses,
         score: totalScore,
-        grade: gradeFromScore(totalScore),
+        grade: gradeFromScore(totalScore, gradeThresholds),
         top_issues: sorted.filter((m) => !m.pass).slice(0, 5),
         screenshot,
       });
@@ -128,7 +130,7 @@ export async function analyzePageSections(
     const allMeasurements = sections.flatMap((s) =>
       s.analyses.flatMap((a) => a.measurements)
     );
-    const fullPageScreenshot = await captureWithOverlay(page, allMeasurements);
+    const fullPageScreenshot = await captureWithOverlay(page, allMeasurements, undefined, spiralOrigin);
 
     return { sections, fullPageScreenshot };
   } finally {

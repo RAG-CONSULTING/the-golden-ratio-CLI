@@ -7,14 +7,20 @@ import {
   extractSpacingMeasurements,
 } from "../dist/engine/extractor.js";
 import { scoreMeasurements } from "../dist/engine/ratio-calculator.js";
+import { resolveContext } from "../dist/engine/presets.js";
 import { buildFullReport, formatFullReport } from "../dist/utils/formatting.js";
+import { generateHtmlReport } from "../dist/utils/html-report.js";
 import { closeBrowser } from "../dist/engine/browser.js";
 import { writeFileSync } from "node:fs";
 
 const url = process.argv[2] || "https://jongibby.com/";
-const tolerance = 0.1;
+const pageType = process.argv[3] || "general";
 const width = 1440;
 const height = 900;
+
+const ctx = resolveContext(pageType);
+console.log(`Page type: ${ctx.pageType} | Tolerance: ${ctx.tolerance * 100}% | Spiral: ${ctx.spiralOrigin}`);
+console.log(`Weights: layout=${ctx.weights.layout} typography=${ctx.weights.typography} spacing=${ctx.weights.spacing} element=${ctx.weights.element}`);
 
 const { sections, fullPageScreenshot } = await analyzePageSections(
   url,
@@ -22,9 +28,9 @@ const { sections, fullPageScreenshot } = await analyzePageSections(
   height,
   async (page, bounds) => {
     const [layoutM, typoM, spacingM] = await Promise.all([
-      extractLayoutMeasurements(page, tolerance, bounds),
-      extractTypographyMeasurements(page, "body", tolerance, bounds),
-      extractSpacingMeasurements(page, "body", tolerance, bounds),
+      extractLayoutMeasurements(page, ctx.tolerance, bounds),
+      extractTypographyMeasurements(page, "body", ctx.tolerance, bounds, ctx.typographySelectors),
+      extractSpacingMeasurements(page, "body", ctx.tolerance, bounds, ctx.spacingChildLimit),
     ]);
     for (const m of layoutM) m.category = "layout";
     for (const m of typoM) m.category = "typography";
@@ -35,7 +41,9 @@ const { sections, fullPageScreenshot } = await analyzePageSections(
       { category: "spacing", measurements: spacingM, score: scoreMeasurements(spacingM), summary: `${spacingM.filter(m => m.pass).length}/${spacingM.length} spacing proportions within tolerance` },
     ];
   },
-  (analyses) => analyses.flatMap((a) => a.measurements)
+  (analyses) => analyses.flatMap((a) => a.measurements),
+  ctx.spiralOrigin,
+  ctx.gradeThresholds
 );
 
 await closeBrowser();
@@ -67,5 +75,11 @@ const mergedAnalyses = categories.map((cat) => {
   };
 }).filter((a) => a.measurements.length > 0);
 
-const report = buildFullReport(url, { width, height }, mergedAnalyses, sections);
+const report = buildFullReport(url, { width, height }, mergedAnalyses, sections, ctx.weights, ctx.gradeThresholds, ctx.pageType);
+
+// Generate HTML report
+const html = generateHtmlReport(report, fullPageScreenshot);
+writeFileSync("golden-ratio-report.html", html);
+console.log("HTML report saved to: golden-ratio-report.html");
+
 console.log(formatFullReport(report, "summary"));

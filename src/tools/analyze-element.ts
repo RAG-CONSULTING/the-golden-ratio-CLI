@@ -4,26 +4,29 @@ import { analyzePage } from "../engine/browser.js";
 import { extractElementMeasurements } from "../engine/extractor.js";
 import { scoreMeasurements } from "../engine/ratio-calculator.js";
 import type { AnalysisResult } from "../engine/types.js";
+import { resolveContext } from "../engine/presets.js";
 
 export function registerAnalyzeElement(server: McpServer) {
   server.tool(
     "analyze_element",
-    "Analyze a specific element's proportions against the golden ratio. Checks width/height ratio, padding proportions, and relationship to parent container. Returns an annotated screenshot with visual overlays.",
+    "Analyze a specific element's proportions against the golden ratio. Checks width/height ratio, padding, and parent relationship.",
     {
       url: z.string().url().describe("URL of the page to analyze (e.g. http://localhost:3000)"),
+      page_type: z.enum(["general", "landing", "saas", "portfolio", "ecommerce", "blog"]).default("general").describe("Page type for context-aware tolerance"),
       selector: z.string().describe("CSS selector for the element (e.g. '.hero-card', '#main-modal')"),
       include_children: z.boolean().default(false).describe("Also analyze direct children's proportions relative to the element"),
-      tolerance: z.number().min(0.01).max(0.5).default(0.1).describe("Acceptable deviation from phi. Default 0.10 = 10%"),
+      tolerance: z.number().min(0.01).max(0.5).optional().describe("Override tolerance. Uses preset default if omitted"),
       viewport_width: z.number().int().min(320).max(3840).default(1440).describe("Viewport width in pixels"),
       viewport_height: z.number().int().min(480).max(2160).default(900).describe("Viewport height in pixels"),
     },
-    async ({ url, selector, include_children, tolerance, viewport_width, viewport_height }) => {
+    async ({ url, page_type, selector, include_children, tolerance, viewport_width, viewport_height }) => {
+      const ctx = resolveContext(page_type, { tolerance });
       try {
         const { data: measurements, screenshot } = await analyzePage(
           url,
           viewport_width,
           viewport_height,
-          (page) => extractElementMeasurements(page, selector, include_children, tolerance),
+          (page) => extractElementMeasurements(page, selector, include_children, ctx.tolerance),
           (m) => m
         );
 

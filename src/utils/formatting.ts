@@ -1,13 +1,16 @@
-import type { AnalysisResult, FullReport, Measurement, SectionReport } from "../engine/types.js";
+import type { AnalysisResult, CategoryWeights, FullReport, Measurement, PageType, SectionReport } from "../engine/types.js";
 import { gradeFromScore, scoreMeasurements } from "../engine/ratio-calculator.js";
 
 export function buildFullReport(
   url: string,
   viewport: { width: number; height: number },
   analyses: AnalysisResult[],
-  sections?: SectionReport[]
+  sections?: SectionReport[],
+  customWeights?: CategoryWeights,
+  gradeThresholds?: { A: number; B: number; C: number; D: number },
+  pageType?: PageType
 ): FullReport {
-  const weights: Record<string, number> = {
+  const weights: Record<string, number> = customWeights ? { ...customWeights } : {
     layout: 0.35,
     typography: 0.25,
     spacing: 0.25,
@@ -55,7 +58,7 @@ export function buildFullReport(
         viewport,
         analyses,
         score: overall_score,
-        grade: gradeFromScore(overall_score),
+        grade: gradeFromScore(overall_score, gradeThresholds),
         top_issues,
       };
 
@@ -63,11 +66,12 @@ export function buildFullReport(
     url,
     viewport,
     timestamp: new Date().toISOString(),
+    page_type: pageType,
     first_contact,
     sections: sectionList,
     analyses,
     overall_score,
-    grade: gradeFromScore(overall_score),
+    grade: gradeFromScore(overall_score, gradeThresholds),
     top_issues,
     top_strengths,
     recommendations,
