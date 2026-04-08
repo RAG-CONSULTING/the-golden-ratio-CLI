@@ -1,0 +1,9 @@
+{
+  "name": "golden-ratio-cli",
+  "version": "0.1.0",
+  "description": "Validates website designs against golden ratio (φ ≈ 1.618) principles using Playwright. Analyzes layout, typography, spacing, and element proportions with annotated screenshots and A-F grading.",
+  "author": {
+    "name": "GIBBY"
+  },
+  "license": "MIT"
+}
